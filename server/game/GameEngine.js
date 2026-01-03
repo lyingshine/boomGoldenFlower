@@ -387,6 +387,8 @@ export class GameEngine {
     }
     
     loser.fold()
+    loser.lostShowdown = true
+    loser.showdownBy = challenger.id  // 记录是被谁开的牌
     loser.hasActed = true
 
     // 记录开牌结果
@@ -420,7 +422,8 @@ export class GameEngine {
       loserName: loser.name,
       cost: showdownCost,
       challengerHand,
-      targetHand
+      targetHand,
+      targetCards: target.hand.toJSON()  // 返回被开牌玩家的手牌
     }
   }
 
@@ -639,44 +642,30 @@ export class GameEngine {
 
     // ========== 已看牌后的决策 ==========
     
-    // 开牌决策
+    // 开牌决策 - 降低开牌概率，让游戏更持久
     if (activePlayers.length >= 1) {
-      // 怪兽牌：找最佳目标开牌
+      // 怪兽牌：不急着开牌，先加注榨取价值
       if (isMonster) {
-        // 优先开可能在诈的对手
-        const bluffingTargets = opponentAnalysis.filter(a => a.behavior.likelyBluffing)
-        if (bluffingTargets.length > 0) {
-          return { action: 'showdown', amount: bluffingTargets[0].player.id }
+        // 只有30%概率开牌
+        if (Math.random() > 0.7) {
+          const target = this.findBestShowdownTarget(activePlayers)
+          if (target) return { action: 'showdown', amount: target.id }
         }
-        // 优先开看牌的对手（确定能赢）
-        if (peekedOpponents.length > 0) {
-          const target = this.findBestShowdownTarget(peekedOpponents)
-          return { action: 'showdown', amount: target.id }
-        }
-        // 开焖牌的对手
-        const target = this.findBestShowdownTarget(activePlayers)
-        return { action: 'showdown', amount: target.id }
       }
       
-      // 强牌：选择性开牌
+      // 强牌：更低概率开牌
       if (isStrong) {
-        // 优先开焖牌的对手（可能在虚张声势）
-        if (blindOpponents.length > 0 && Math.random() > 0.3) {
-          const target = this.findBestShowdownTarget(blindOpponents)
-          return { action: 'showdown', amount: target.id }
-        }
-        // 只剩一个对手时更倾向开牌
-        if (totalOpponents === 1 && Math.random() > 0.4) {
+        // 只剩一个对手时20%概率开牌
+        if (totalOpponents === 1 && Math.random() > 0.8) {
           return { action: 'showdown', amount: activePlayers[0].id }
         }
       }
       
-      // 中等牌：谨慎开牌
+      // 中等牌：很少开牌
       if (isMedium && totalOpponents === 1) {
-        // 对手焖牌且下注不大，考虑开
-        const opponent = activePlayers[0]
-        if (!opponent.hasPeeked && opponent.lastBetAmount <= callAmount && Math.random() > 0.6) {
-          return { action: 'showdown', amount: opponent.id }
+        // 10%概率开牌
+        if (Math.random() > 0.9) {
+          return { action: 'showdown', amount: activePlayers[0].id }
         }
       }
     }
@@ -874,6 +863,8 @@ export class GameEngine {
       if (!p) return null
       if (i === seatIndex) return p.toPrivateJSON()
       if (this.state.phase === 'showdown' || this.state.phase === 'ended') return p.toFullJSON()
+      // 被开牌输掉的玩家，只有发起开牌的人能看到手牌
+      if (p.lostShowdown && p.showdownBy === seatIndex) return p.toFullJSON()
       return p.toPublicJSON()
     })
     return { ...state, seats }

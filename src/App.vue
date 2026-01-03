@@ -26,15 +26,11 @@
         :user-manager="userManager"
         :game-phase="gamePhase"
         :my-player="myPlayer"
-        @back-to-lobby="onBackToLobby"
-        @logout="onLogout"
-      />
-
-      <RoomInfoBar
-        v-if="roomCode"
         :room-code="roomCode"
         :player-count="players.length"
         :round="gameStats.round"
+        @back-to-lobby="onBackToLobby"
+        @logout="onLogout"
       />
 
       <GameTable
@@ -47,7 +43,11 @@
         :my-seat-index="mySeatIndex"
         :is-loading="isLoading"
         :loading-text="loadingText"
+        :showdown-result="showdownResultDisplay"
+        :showdown-mode="showdownMode"
+        :showdown-preview="showdownPreview"
         @card-click="onCardClick"
+        @player-click="onPlayerClick"
       />
 
       <GameControls
@@ -71,6 +71,7 @@
         @blind="onBlind"
         @fold="sendAction('fold')"
         @showdown="onShowdown"
+        @showdown-mode-change="showdownMode = $event"
       />
     </template>
   </div>
@@ -84,13 +85,12 @@ import { NetworkManager } from './utils/NetworkManager.js'
 import LoginModal from './components/LoginModal.vue'
 import LobbyPanel from './components/LobbyPanel.vue'
 import GameHeader from './components/GameHeader.vue'
-import RoomInfoBar from './components/RoomInfoBar.vue'
 import GameTable from './components/GameTable.vue'
 import GameControls from './components/GameControls.vue'
 
 export default {
   name: 'App',
-  components: { LoginModal, LobbyPanel, GameHeader, RoomInfoBar, GameTable, GameControls },
+  components: { LoginModal, LobbyPanel, GameHeader, GameTable, GameControls },
   data() {
     return {
       gameState: new ClientGameState(),
@@ -103,7 +103,11 @@ export default {
       lobbyPlayers: [],
       roomCode: '',
       isLoading: false,
-      loadingText: ''
+      loadingText: '',
+      showdownResultDisplay: null,
+      showdownMode: false,
+      showdownPreview: null,  // 开牌时展示对手手牌
+      pendingShowdownTarget: null  // 等待开牌结果的目标
     }
   },
   computed: {
@@ -269,32 +273,50 @@ export default {
       }
     },
     showShowdownResult(result) {
-      const myIndex = this.gameState.mySeatIndex
-      const isInvolved = result.seatIndex === myIndex || result.targetSeatIndex === myIndex
+      console.log('🎯 开牌结果:', result)
+      const challengerName = this.allSeats[result.seatIndex]?.name || '玩家'
+      const targetName = this.allSeats[result.targetSeatIndex]?.name || '玩家'
       
-      if (isInvolved || true) {
-        const challengerName = this.allSeats[result.seatIndex]?.name || '玩家'
-        const targetName = this.allSeats[result.targetSeatIndex]?.name || '玩家'
-        const winnerName = result.winnerName
-        const loserName = result.loserName
-        
-        const formatHand = (hand) => {
-          if (!hand) return ''
-          const typeMap = {
-            'leopard': '豹子',
-            'straight_flush': '同花顺',
-            'flush': '同花',
-            'straight': '顺子',
-            'pair': '对子',
-            'high_card': '散牌'
-          }
-          return typeMap[hand.type] || hand.type || ''
+      const formatHand = (hand) => {
+        if (!hand) return ''
+        const typeMap = {
+          'leopard': '豹子',
+          'straight_flush': '同花顺',
+          'flush': '同花',
+          'straight': '顺子',
+          'pair': '对子',
+          'high_card': '散牌'
         }
-        
-        const msg = `⚔️ ${challengerName} 开 ${targetName} 的牌\n${challengerName}: ${formatHand(result.challengerHand)}\n${targetName}: ${formatHand(result.targetHand)}\n🏆 ${winnerName} 获胜，${loserName} 弃牌`
-        
-        setTimeout(() => alert(msg), 100)
+        return typeMap[hand.type] || hand.type || ''
       }
+      
+      // 如果是我发起的开牌，先展示对手手牌
+      if (this.pendingShowdownTarget !== null && result.targetCards) {
+        this.showdownPreview = {
+          targetName: targetName,
+          targetSeatIndex: result.targetSeatIndex,
+          cards: result.targetCards
+        }
+        this.pendingShowdownTarget = null
+        // 2.5秒后关闭预览
+        setTimeout(() => {
+          this.showdownPreview = null
+        }, 2500)
+      }
+      
+      this.showdownResultDisplay = {
+        challengerName,
+        targetName,
+        winnerName: result.winnerName,
+        loserName: result.loserName,
+        challengerHand: formatHand(result.challengerHand),
+        targetHand: formatHand(result.targetHand)
+      }
+      
+      // 8秒后自动清除
+      setTimeout(() => {
+        this.showdownResultDisplay = null
+      }, 8000)
     },
     onLoginSuccess(userManager) {
       if (userManager) {
@@ -350,10 +372,7 @@ export default {
     },
     startNewGame() {
       if (!this.networkManager.isHost) return
-      this.isLoading = true
-      this.loadingText = '准备中...'
       this.networkManager.startGame()
-      setTimeout(() => { this.isLoading = false }, 2000)
     },
     sendAction(action, amount = 0) {
       this.networkManager.sendAction(action, amount)
@@ -379,6 +398,19 @@ export default {
     onCardClick(player) {
       if (player.id === this.mySeatIndex && !player.hasPeeked) {
         this.sendAction('peek')
+      }
+    },
+    onPlayerClick(seatIndex) {
+      // 开牌模式下点击对手手牌
+      if (this.showdownMode) {
+        const targetPlayer = this.allSeats[seatIndex]
+        if (targetPlayer) {
+          // 记录要开牌的目标，等服务器返回结果后再展示
+          this.pendingShowdownTarget = seatIndex
+          // 发送开牌请求
+          this.onShowdown(seatIndex)
+          this.showdownMode = false
+        }
       }
     }
   }

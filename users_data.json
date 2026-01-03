@@ -54,12 +54,12 @@
   "复仇者": {
     "username": "复仇者",
     "password": "1234",
-    "chips": 2475,
-    "totalGames": 89,
-    "wins": 28,
-    "losses": 61,
+    "chips": 2247,
+    "totalGames": 100,
+    "wins": 35,
+    "losses": 65,
     "createdAt": 1767459012140,
-    "lastLogin": 1767459012247,
+    "lastLogin": 1767468967404,
     "lastSignIn": 1767460164072,
     "signInStreak": 1,
     "totalSignIns": 1

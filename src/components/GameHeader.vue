@@ -41,22 +41,43 @@
       </div>
       
       <div class="header-right">
+        <button v-if="roomCode" class="room-info-toggle" @click.stop="toggleRoomInfo">
+          ℹ️
+        </button>
+        <!-- 房间信息下拉 -->
+        <div v-if="showRoomInfo && roomCode" class="room-info-dropdown" @click.stop>
+          <div class="room-info-item room-code-item" @click="copyRoomCode" title="点击复制">
+            <span class="room-info-icon">🔑</span>
+            <span class="room-info-value room-code-value">{{ roomCode }}</span>
+            <span class="copy-icon">{{ copied ? '✓' : '📋' }}</span>
+          </div>
+          <div class="room-info-item">
+            <span class="room-info-icon">👥</span>
+            <span class="room-info-value">{{ playerCount }}人</span>
+          </div>
+          <div class="room-info-item">
+            <span class="room-info-icon">🎲</span>
+            <span class="room-info-value">第{{ round }}局</span>
+          </div>
+        </div>
       </div>
     </header>
     
     <!-- 点击外部关闭菜单 - 放在最后 -->
-    <div v-if="showMenu" class="menu-overlay" @click="closeMenu"></div>
+    <div v-if="showMenu || showRoomInfo" class="menu-overlay" @click="closeAllMenus"></div>
   </div>
 </template>
 
 <script>
 export default {
   name: 'GameHeader',
-  props: ['userManager', 'gamePhase', 'myPlayer'],
+  props: ['userManager', 'gamePhase', 'myPlayer', 'roomCode', 'playerCount', 'round'],
   emits: ['back-to-lobby', 'logout'],
   data() {
     return {
-      showMenu: false
+      showMenu: false,
+      showRoomInfo: false,
+      copied: false
     }
   },
   computed: {
@@ -87,9 +108,15 @@ export default {
   methods: {
     toggleMenu() {
       this.showMenu = !this.showMenu
+      if (this.showMenu) this.showRoomInfo = false
     },
-    closeMenu() {
+    toggleRoomInfo() {
+      this.showRoomInfo = !this.showRoomInfo
+      if (this.showRoomInfo) this.showMenu = false
+    },
+    closeAllMenus() {
       this.showMenu = false
+      this.showRoomInfo = false
     },
     handleBackToLobby() {
       const inGame = this.gamePhase === 'betting'
@@ -106,6 +133,22 @@ export default {
         this.showMenu = false
         this.$emit('logout', { manual: true })
       }
+    },
+    async copyRoomCode() {
+      try {
+        await navigator.clipboard.writeText(this.roomCode)
+        this.copied = true
+        setTimeout(() => this.copied = false, 2000)
+      } catch (e) {
+        const input = document.createElement('input')
+        input.value = this.roomCode
+        document.body.appendChild(input)
+        input.select()
+        document.execCommand('copy')
+        document.body.removeChild(input)
+        this.copied = true
+        setTimeout(() => this.copied = false, 2000)
+      }
     }
   }
 }
@@ -118,7 +161,7 @@ export default {
 
 .game-header {
   position: fixed;
-  top: 0;
+  top: env(safe-area-inset-top);
   left: 0;
   right: 0;
   height: 44px;
@@ -127,7 +170,8 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 12px;
+  padding-left: 12px;
+  padding-right: 12px;
   z-index: 100;
   border-bottom: 1px solid rgba(255, 215, 0, 0.2);
 }
@@ -201,6 +245,83 @@ export default {
 .header-right {
   flex: 0 0 auto;
   width: 60px;
+  display: flex;
+  justify-content: flex-end;
+  position: relative;
+}
+
+.room-info-toggle {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.room-info-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.room-info-dropdown {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.98);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.room-info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.room-code-item {
+  cursor: pointer;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.room-code-item:hover {
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.room-info-icon {
+  font-size: 12px;
+}
+
+.room-info-value {
+  font-size: 12px;
+  color: white;
+  font-weight: 600;
+}
+
+.room-code-value {
+  color: #ffd700;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+}
+
+.copy-icon {
+  font-size: 10px;
+  opacity: 0.6;
 }
 
 /* 下拉菜单 */

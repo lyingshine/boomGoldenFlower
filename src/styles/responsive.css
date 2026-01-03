@@ -2,33 +2,112 @@
 
 /* 4人及以下居中布局 - 移动端 */
 @media (max-width: 768px) {
+  /* 座位0：底部中间 */
   .players-area.centered-layout .player-seat.seat-0 {
-    left: calc(50% - 32px) !important;
+    bottom: -135px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
   }
+  .players-area.centered-layout .player-seat.seat-0 .player-cards {
+    bottom: 145px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+  
+  /* 座位5：顶部中间 */
   .players-area.centered-layout .player-seat.seat-5 {
-    left: calc(50% - 32px) !important;
+    top: -135px !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    flex-direction: column !important;
   }
+  .players-area.centered-layout .player-seat.seat-5 .player-cards {
+    top: 145px !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    flex-direction: row !important;
+  }
+  
+  /* 座位6：左侧中间 */
   .players-area.centered-layout .player-seat.seat-6 {
-    top: calc(50% - 30px) !important;
+    left: -85px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    flex-direction: row-reverse !important;
   }
+  .players-area.centered-layout .player-seat.seat-6 .player-cards {
+    left: 95px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    flex-direction: column !important;
+  }
+  
+  /* 座位2：右侧中间 */
   .players-area.centered-layout .player-seat.seat-2 {
-    top: calc(50% - 30px) !important;
+    right: -85px !important;
+    left: auto !important;
+    bottom: auto !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    flex-direction: row !important;
+  }
+  .players-area.centered-layout .player-seat.seat-2 .player-cards {
+    right: 95px !important;
+    left: auto !important;
+    bottom: auto !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    flex-direction: column !important;
   }
 }
 
 /* 4人及以下居中布局 - 桌面端 */
 @media (min-width: 769px) {
+  /* 座位0：底部中间 */
   .players-area.centered-layout .player-seat.seat-0 {
-    left: calc(50% - 45px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
   }
+  /* 座位5：顶部中间 */
   .players-area.centered-layout .player-seat.seat-5 {
-    top: calc(50% - 40px) !important;
+    top: -140px !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    flex-direction: column !important;
   }
+  .players-area.centered-layout .player-seat.seat-5 .player-cards {
+    top: 140px !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    flex-direction: row !important;
+  }
+  /* 座位6：左侧中间 */
   .players-area.centered-layout .player-seat.seat-6 {
-    top: calc(50% - 40px) !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
   }
+  /* 座位2：右侧中间 */
   .players-area.centered-layout .player-seat.seat-2 {
-    top: calc(50% - 40px) !important;
+    top: 50% !important;
+    right: -130px !important;
+    left: auto !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+    flex-direction: row !important;
+  }
+  .players-area.centered-layout .player-seat.seat-2 .player-cards {
+    right: 130px !important;
+    left: auto !important;
+    bottom: auto !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    flex-direction: column !important;
   }
 }
 
@@ -59,8 +138,9 @@
   }
   
   .player-chips {
-    font-size: 9px;
+    font-size: 11px;
     padding: 2px 5px;
+    margin-bottom: 0;
   }
   
   .game-card {
@@ -150,12 +230,12 @@
   
   /* 牌桌 - 移动端专用布局 */
   .new-game-table {
-    width: 70vw;
-    max-width: 280px;
-    height: 360px;
-    margin: 140px auto 30px auto;
+    width: 60vw;
+    max-width: 240px;
+    height: 300px;
+    margin: calc(180px + env(safe-area-inset-top)) auto 30px auto;
     border-width: 5px;
-    border-radius: 140px;
+    border-radius: 120px;
     overflow: visible;
   }
   
@@ -176,6 +256,31 @@
     width: 140px;
     padding: 10px 12px;
     border-radius: 10px;
+  }
+  
+  /* 移动端结算界面缩小 */
+  .pot-display.winner-info {
+    width: 130px;
+    padding: 8px 12px;
+  }
+  
+  .pot-display.winner-info .winner-crown {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+  
+  .pot-display.winner-info .winner-text {
+    font-size: 12px;
+    margin-bottom: 2px;
+  }
+  
+  .pot-display.winner-info .winner-amount {
+    font-size: 11px;
+  }
+  
+  .pot-display.winner-info .winner-hand {
+    font-size: 10px;
+    margin-top: 4px;
   }
   
   .pot-label {
@@ -202,8 +307,8 @@
   
   /* 玩家信息卡片 - 紧凑版 */
   .player-info {
-    min-width: 58px;
-    max-width: 65px;
+    min-width: 68px;
+    max-width: 75px;
     padding: 4px 5px;
     border-radius: 6px;
     border-width: 1px;
@@ -224,15 +329,15 @@
   }
   
   .player-chips {
-    font-size: 7px;
-    padding: 1px 3px;
-    border-radius: 3px;
+    font-size: 10px;
+    padding: 2px 4px;
+    margin-bottom: 0;
   }
   
   .player-chips::before {
     content: '💰';
-    font-size: 6px;
-    margin-right: 1px;
+    font-size: 8px;
+    margin-right: 2px;
   }
   
   .player-bet {
@@ -285,35 +390,35 @@
   }
   
   /* 移动端座位位置 - 8人布局 */
-  /* 底部2个玩家 */
+  /* 底部2个玩家 - 卡片在牌桌下方，牌在牌桌内 */
   .player-seat.seat-0 {
-    bottom: -105px;
-    left: calc(50% - 110px);
+    bottom: -135px;
+    left: calc(50% - 100px);
   }
   .player-seat.seat-0 .player-cards {
-    bottom: 105px;
+    bottom: 145px;
   }
   
   .player-seat.seat-1 {
-    bottom: -105px;
-    left: calc(50% + 45px);
+    bottom: -135px;
+    left: calc(50% + 30px);
   }
   .player-seat.seat-1 .player-cards {
-    bottom: 105px;
+    bottom: 145px;
   }
   
-  /* 右侧2个玩家 */
+  /* 右侧2个玩家 - 卡片在牌桌右侧，牌在牌桌内 */
   .player-seat.seat-2 {
     bottom: auto;
     left: auto;
-    right: -70px;
-    top: calc(50% + 60px);
+    right: -85px;
+    top: calc(50% + 30px);
     flex-direction: row;
   }
   .player-seat.seat-2 .player-cards {
     position: absolute;
     bottom: auto;
-    right: 70px;
+    right: 95px;
     left: auto;
     top: 50%;
     transform: translateY(-50%);
@@ -323,32 +428,32 @@
   .player-seat.seat-3 {
     bottom: auto;
     left: auto;
-    right: -70px;
-    top: calc(50% - 120px);
+    right: -85px;
+    top: calc(50% - 90px);
     flex-direction: row;
   }
   .player-seat.seat-3 .player-cards {
     position: absolute;
     bottom: auto;
-    right: 70px;
+    right: 95px;
     left: auto;
     top: 50%;
     transform: translateY(-50%);
     flex-direction: column;
   }
   
-  /* 顶部2个玩家 */
+  /* 顶部2个玩家 - 卡片在牌桌上方，牌在牌桌内 */
   .player-seat.seat-4 {
     display: flex;
-    top: -95px;
+    top: -135px;
     bottom: auto;
-    left: calc(50% + 45px);
+    left: calc(50% + 30px);
     right: auto;
     flex-direction: column;
   }
   .player-seat.seat-4 .player-cards {
     position: absolute;
-    top: 95px;
+    top: 145px;
     bottom: auto;
     left: 50%;
     right: auto;
@@ -358,15 +463,15 @@
   
   .player-seat.seat-5 {
     display: flex;
-    top: -95px;
+    top: -135px;
     bottom: auto;
-    left: calc(50% - 110px);
+    left: calc(50% - 100px);
     right: auto;
     flex-direction: column;
   }
   .player-seat.seat-5 .player-cards {
     position: absolute;
-    top: 95px;
+    top: 145px;
     bottom: auto;
     left: 50%;
     right: auto;
@@ -374,28 +479,28 @@
     flex-direction: row;
   }
   
-  /* 左侧2个玩家 */
+  /* 左侧2个玩家 - 卡片在牌桌左侧，牌在牌桌内 */
   .player-seat.seat-6 {
-    left: -80px;
-    top: calc(50% - 120px);
+    left: -85px;
+    top: calc(50% - 90px);
     flex-direction: row-reverse;
   }
   .player-seat.seat-6 .player-cards {
     position: absolute;
-    left: 80px;
+    left: 95px;
     top: 50%;
     transform: translateY(-50%);
     flex-direction: column;
   }
   
   .player-seat.seat-7 {
-    left: -80px;
-    top: calc(50% + 60px);
+    left: -85px;
+    top: calc(50% + 30px);
     flex-direction: row-reverse;
   }
   .player-seat.seat-7 .player-cards {
     position: absolute;
-    left: 80px;
+    left: 95px;
     top: 50%;
     transform: translateY(-50%);
     flex-direction: column;
@@ -420,26 +525,35 @@
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
-    padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)) 14px !important;
-    border-radius: 12px 12px 0 0 !important;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)) 16px !important;
+    border-radius: 20px 20px 0 0 !important;
     max-width: 100% !important;
     width: 100% !important;
     transform: none !important;
-    border-bottom: none;
     box-sizing: border-box;
+    min-width: auto !important;
+    border-bottom: none !important;
+  }
+  
+  .game-controls-wrapper.my-turn {
+    border-color: rgba(255, 215, 0, 0.5) !important;
+    border-width: 2px 2px 0 2px !important;
+    box-shadow: 
+      0 -4px 24px rgba(255, 215, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
   }
   
   .game-controls {
-    gap: 6px;
+    gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
   }
   
   .btn {
-    padding: 8px 12px;
-    font-size: 11px;
+    padding: 10px 14px;
+    font-size: 12px;
     min-width: 70px;
-    border-radius: 8px;
+    border-radius: 10px;
   }
   
   .btn-large {
@@ -465,7 +579,7 @@
   
   /* 房间信息栏 */
   .room-info-bar {
-    top: 48px;
+    top: calc(100px + env(safe-area-inset-top)) !important;
     left: 4px;
     gap: 3px;
   }
@@ -613,6 +727,29 @@
   }
 }
 
+/* 大屏手机 (iPhone Pro Max 等，物理分辨率约2868x1320) */
+@media (max-width: 500px) and (min-height: 900px) {
+  .new-game-table {
+    margin-top: calc(220px + env(safe-area-inset-top)) !important;
+  }
+  
+  /* 上下玩家离桌远一点 */
+  .player-seat.seat-0 { bottom: -145px !important; }
+  .player-seat.seat-0 .player-cards { bottom: 155px !important; }
+  .player-seat.seat-1 { bottom: -145px !important; }
+  .player-seat.seat-1 .player-cards { bottom: 155px !important; }
+  .player-seat.seat-4 { top: -145px !important; }
+  .player-seat.seat-4 .player-cards { top: 155px !important; }
+  .player-seat.seat-5 { top: -145px !important; }
+  .player-seat.seat-5 .player-cards { top: 155px !important; }
+  
+  /* 居中布局时 */
+  .players-area.centered-layout .player-seat.seat-0 { bottom: -145px !important; }
+  .players-area.centered-layout .player-seat.seat-0 .player-cards { bottom: 155px !important; }
+  .players-area.centered-layout .player-seat.seat-5 { top: -145px !important; }
+  .players-area.centered-layout .player-seat.seat-5 .player-cards { top: 155px !important; }
+}
+
 /* 小屏手机 */
 @media (max-width: 380px) {
   .new-game-table {
@@ -633,8 +770,8 @@
   }
   
   .player-info {
-    min-width: 50px;
-    max-width: 55px;
+    min-width: 58px;
+    max-width: 65px;
     padding: 3px 4px;
   }
   
@@ -650,7 +787,8 @@
   }
   
   .player-chips {
-    font-size: 6px;
+    font-size: 9px;
+    margin-bottom: 0;
   }
   
   .game-card {

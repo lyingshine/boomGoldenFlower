@@ -457,42 +457,18 @@ function processAITurn(room) {
     return
   }
   
-  // 检查是否只剩AI玩家
+  // 检查是否只剩AI玩家（没有未弃牌的人类玩家）
   const activePlayers = game.getActivePlayers()
-  const humanPlayers = activePlayers.filter(p => p.type === 'human')
+  const humanPlayers = activePlayers.filter(p => p.type === 'human' && !p.folded)
   const onlyAI = humanPlayers.length === 0
   
-  // 只剩AI时速战速决，延迟缩短到50ms
-  const delay = onlyAI ? 50 : 400
+  // 只剩AI时稍微加快，但不要太快
+  const delay = onlyAI ? 600 : 800
   
   // 延迟执行AI决策
   setTimeout(() => {
-    // 只剩AI时直接让最强的AI开牌结束
-    if (onlyAI && activePlayers.length >= 2) {
-      const aiPlayers = activePlayers.filter(p => p.type === 'ai')
-      // 找牌力最强的AI
-      let strongestAI = aiPlayers[0]
-      for (const ai of aiPlayers) {
-        if (ai.hand.getType().weight > strongestAI.hand.getType().weight) {
-          strongestAI = ai
-        }
-      }
-      // 让最强AI开牌
-      if (game.state.currentPlayerIndex === strongestAI.id) {
-        const target = aiPlayers.find(p => p.id !== strongestAI.id)
-        if (target) {
-          const result = game.handleAction(strongestAI.id, 'showdown', target.id)
-          if (result.success) {
-            room.broadcast({ type: 'action_result', ...result, isAI: true })
-            room.broadcastGameState()
-            if (result.action !== 'gameEnd') {
-              processAITurn(room)
-            }
-          }
-          return
-        }
-      }
-    }
+    // 重新检查游戏状态
+    if (game.state.phase !== 'betting') return
     
     const decision = game.makeAIDecision(game.state.currentPlayerIndex)
     if (!decision) return

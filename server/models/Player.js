@@ -14,6 +14,7 @@ export class Player {
     this.lastBetAmount = 0 // 这一手下注的金额
     this.lastBetBlind = false // 这一手是否焖牌
     this.folded = false
+    this.lostShowdown = false // 比牌输了
     this.hasPeeked = false
     this.isAllIn = false
     this.hasActed = false
@@ -46,6 +47,8 @@ export class Player {
     this.lastBetAmount = 0
     this.lastBetBlind = false
     this.folded = false
+    this.lostShowdown = false
+    this.showdownBy = null
     this.hasPeeked = false
     this.isAllIn = false
     this.hasActed = false
@@ -62,6 +65,7 @@ export class Player {
       lastBetAmount: this.lastBetAmount,
       lastBetBlind: this.lastBetBlind,
       folded: this.folded,
+      lostShowdown: this.lostShowdown,
       hasPeeked: this.hasPeeked,
       isAllIn: this.isAllIn,
       cardCount: this.hand.cards.length

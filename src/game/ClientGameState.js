@@ -44,6 +44,7 @@ export class ClientGameState {
           lastBetAmount: seat.lastBetAmount || 0,
           lastBetBlind: seat.lastBetBlind || false,
           folded: seat.folded || false,
+          lostShowdown: seat.lostShowdown || false,
           hasPeeked: seat.hasPeeked || false,
           isAllIn: seat.isAllIn || false,
           cardCount: seat.cardCount || 0,

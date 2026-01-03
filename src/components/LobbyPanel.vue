@@ -313,6 +313,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
+  margin-top: env(safe-area-inset-top);
   background: rgba(0, 0, 0, 0.3);
   border-radius: 10px;
   margin-bottom: 16px;

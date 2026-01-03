@@ -1,0 +1,19 @@
+/* 模块化样式系统 - 按依赖顺序导入 */
+@import './styles/variables.css';    /* 1. 设计令牌 */
+@import './styles/base.css';         /* 2. 基础重置和全局样式 */
+@import './styles/layout.css';       /* 3. 布局系统 */
+@import './styles/components.css';   /* 4. 组件样式 */
+@import './styles/game.css';         /* 5. 游戏特定样式 */
+@import './styles/responsive.css';   /* 6. 响应式样式 */
+
+/* 应用根容器 */
+#app {
+  min-height: 100vh;
+  height: 100%;
+  position: relative;
+  width: 100%;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}

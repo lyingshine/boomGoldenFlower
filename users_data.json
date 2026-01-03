@@ -1,0 +1,28 @@
+{
+  "11": {
+    "username": "11",
+    "password": "1234",
+    "chips": 1090,
+    "totalGames": 0,
+    "wins": 0,
+    "losses": 0,
+    "createdAt": 1767410357446,
+    "lastLogin": 1767410357550,
+    "lastSignIn": 1767410377059,
+    "signInStreak": 1,
+    "totalSignIns": 1
+  },
+  "22": {
+    "username": "22",
+    "password": "1234",
+    "chips": 919,
+    "totalGames": 12,
+    "wins": 4,
+    "losses": 8,
+    "createdAt": 1767410372245,
+    "lastLogin": 1767417679818,
+    "lastSignIn": null,
+    "signInStreak": 0,
+    "totalSignIns": 0
+  }
+}

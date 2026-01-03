@@ -1,0 +1,136 @@
+/* 基础样式模块 - 重置和全局样式 */
+
+/* CSS重置 */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 性能优化 */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 启用平滑过渡动画 - 提升用户体验 */
+button, .btn, .game-card, .player-info, .player-avatar {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+/* 全局样式 - 赌场环境氛围 */
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Arial', 'Helvetica', sans-serif;
+  line-height: 1.6;
+  color: white;
+  overflow-x: hidden;
+  min-height: 100vh;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  /* 深色赌场背景 */
+  background: 
+    /* 主背景渐变 */
+    radial-gradient(ellipse at top, 
+      #1a1a2e 0%, 
+      #16213e 30%, 
+      #0f172a 70%, 
+      #020617 100%
+    ),
+    /* 纹理层 */
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.01) 2px,
+      rgba(255, 255, 255, 0.01) 4px
+    );
+  background-attachment: fixed;
+}
+
+/* 背景装饰 - 赌场灯光效果 */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* 模拟赌场灯光 */
+  background: 
+    /* 顶部聚光灯 */
+    radial-gradient(ellipse 800px 400px at 50% 0%, 
+      rgba(255, 215, 0, 0.08) 0%, 
+      transparent 50%
+    ),
+    /* 左侧氛围灯 */
+    radial-gradient(ellipse 400px 600px at 0% 50%, 
+      rgba(220, 38, 38, 0.05) 0%, 
+      transparent 50%
+    ),
+    /* 右侧氛围灯 */
+    radial-gradient(ellipse 400px 600px at 100% 50%, 
+      rgba(59, 130, 246, 0.05) 0%, 
+      transparent 50%
+    ),
+    /* 底部暖光 */
+    radial-gradient(ellipse 600px 300px at 50% 100%, 
+      rgba(34, 197, 94, 0.06) 0%, 
+      transparent 50%
+    );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* 文字选择禁用 */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* 滚动条美化 - 移除动画 */
+::-webkit-scrollbar {
+  width: var(--space-2);
+  height: var(--space-2);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--glass-bg-dark);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gradient-gold);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gradient-primary);
+}
+
+/* 文本选择样式 */
+::selection {
+  background: rgba(255, 215, 0, 0.3);
+  color: white;
+}
+
+::-moz-selection {
+  background: rgba(255, 215, 0, 0.3);
+  color: white;
+}

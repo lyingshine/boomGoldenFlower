@@ -1,0 +1,23 @@
+{
+  "name": "zhajinhua-game",
+  "version": "1.0.0",
+  "description": "Vue诈金花游戏",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node server.js"
+  },
+  "dependencies": {
+    "vue": "^3.4.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vite": "^5.0.0"
+  },
+  "keywords": ["game", "cards", "zhajinhua", "vue"],
+  "author": "",
+  "license": "MIT"
+}

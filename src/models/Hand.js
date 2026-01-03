@@ -66,12 +66,12 @@ export class Hand {
       return { type: 'straight', weight };
     }
 
-    // 对子
+    // 对子（比顺子小）
     if (values[0] === values[1] || values[1] === values[2] || values[0] === values[2]) {
       const pairValue = values[0] === values[1] ? values[0] : 
                        values[1] === values[2] ? values[1] : values[2];
       const kicker = values.find(v => v !== pairValue);
-      return { type: 'pair', weight: 4000 + pairValue * 100 + kicker };
+      return { type: 'pair', weight: 3000 + pairValue * 100 + kicker };
     }
 
     // 高牌

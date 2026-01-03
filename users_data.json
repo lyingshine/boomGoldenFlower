@@ -24,5 +24,44 @@
     "lastSignIn": null,
     "signInStreak": 0,
     "totalSignIns": 0
+  },
+  "lyingshine": {
+    "username": "lyingshine",
+    "password": "1234",
+    "chips": 0,
+    "totalGames": 103,
+    "wins": 45,
+    "losses": 58,
+    "createdAt": 1767422518094,
+    "lastLogin": 1767455929260,
+    "lastSignIn": null,
+    "signInStreak": 0,
+    "totalSignIns": 0
+  },
+  "susu": {
+    "username": "susu",
+    "password": "1111",
+    "chips": 9245,
+    "totalGames": 190,
+    "wins": 102,
+    "losses": 88,
+    "createdAt": 1767422553094,
+    "lastLogin": 1767422553201,
+    "lastSignIn": null,
+    "signInStreak": 0,
+    "totalSignIns": 0
+  },
+  "复仇者": {
+    "username": "复仇者",
+    "password": "1234",
+    "chips": 2530,
+    "totalGames": 88,
+    "wins": 28,
+    "losses": 60,
+    "createdAt": 1767459012140,
+    "lastLogin": 1767459012247,
+    "lastSignIn": 1767460164072,
+    "signInStreak": 1,
+    "totalSignIns": 1
   }
 }

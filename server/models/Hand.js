@@ -43,17 +43,17 @@ export class Hand {
       return { type: 'flush', weight: 6000 + values[0] * 100 + values[1] * 10 + values[2] }
     }
 
-    // 顺子
+    // 顺子（比对子大）
     if (isStraight) {
       const w = (values[0] === 14 && values[1] === 3) ? 1 : values[0]
       return { type: 'straight', weight: 5000 + w }
     }
 
-    // 对子
+    // 对子（比顺子小）
     if (values[0] === values[1] || values[1] === values[2] || values[0] === values[2]) {
       const pair = values[0] === values[1] ? values[0] : values[1] === values[2] ? values[1] : values[2]
       const kicker = values.find(v => v !== pair)
-      return { type: 'pair', weight: 4000 + pair * 100 + kicker }
+      return { type: 'pair', weight: 3000 + pair * 100 + kicker }
     }
 
     // 高牌

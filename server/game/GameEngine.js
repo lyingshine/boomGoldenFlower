@@ -560,7 +560,7 @@ export class GameEngine {
       // 强牌：根据对手行为决定
       if (isStrong) {
         // 对手激进时看牌准备反击
-        if (aggressiveOpponents > 0 && Math.random() > 0.4) {
+        if (aggressiveCount > 0 && Math.random() > 0.4) {
           return { action: 'peek' }
         }
         // 否则继续焖

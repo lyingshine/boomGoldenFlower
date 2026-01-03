@@ -78,23 +78,26 @@
       >
         <template v-if="player">
           <div class="player-info">
-            <div class="player-avatar" :class="{ 'my-avatar': index === mySeatIndex }">
-              {{ index === mySeatIndex ? '😎' : (player.type === 'human' ? '🎮' : '🤖') }}
-            </div>
-            <div class="player-name">
-              {{ player.name }}
-              <span v-if="index === mySeatIndex" class="me-badge">我</span>
+            <div class="player-header">
+              <div class="player-avatar" :class="{ 'my-avatar': index === mySeatIndex }">
+                {{ index === mySeatIndex ? '😎' : (player.type === 'human' ? '🎮' : '🤖') }}
+              </div>
+              <div class="player-name">
+                {{ player.name }}
+              </div>
             </div>
             <div class="player-chips">¥{{ player.chips }}</div>
             <div v-if="!player.folded && gamePhase === 'betting'" class="player-mode">
               <span v-if="player.hasPeeked" class="mode-tag peeked">已看牌</span>
               <span v-else class="mode-tag blind">焖牌中</span>
             </div>
-            <div v-if="!player.folded && player.currentBet > 0" class="player-bet">
-              总: ¥{{ player.currentBet }}
-            </div>
-            <div v-if="!player.folded && player.lastBetAmount > 0 && gamePhase === 'betting'" class="player-bet round-bet">
-              本轮: ¥{{ player.lastBetAmount }}
+            <div v-if="!player.folded && (player.currentBet > 0 || player.lastBetAmount > 0)" class="player-bet-info">
+              <div v-if="player.currentBet > 0" class="player-bet">
+                本把: ¥{{ player.currentBet }}
+              </div>
+              <div v-if="player.lastBetAmount > 0 && gamePhase === 'betting'" class="player-bet round-bet">
+                本轮: ¥{{ player.lastBetAmount }}
+              </div>
             </div>
             <div v-if="player.folded" class="player-status folded">{{ player.lostShowdown ? '比牌输' : '已弃牌' }}</div>
             <div v-else-if="player.isAllIn" class="player-status allin">ALL IN</div>
@@ -352,7 +355,7 @@ export default {
   margin-top: 5px;
   padding: 3px 8px;
   background: rgba(255, 215, 0, 0.15);
-  border-radius: 5px;
+  border-radius: var(--radius-lg);
 }
 
 .me-badge {
@@ -360,23 +363,25 @@ export default {
   background: #22c55e;
   color: white;
   padding: 2px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   margin-left: 4px;
   font-size: 9px;
   font-weight: 600;
 }
 
 .player-mode {
-  margin-top: 1px;
+  margin-top: -4px;
+  margin-bottom: 1px;
 }
 
 .mode-tag {
-  font-size: 9px;
-  padding: 3px 8px;
-  border-radius: 6px;
+  font-size: 8px;
+  padding: 2px 6px;
+  border-radius: var(--radius-lg);
   font-weight: 600;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
   display: inline-block;
+  line-height: 1;
 }
 
 .mode-tag.peeked {
@@ -403,7 +408,7 @@ export default {
   background: linear-gradient(135deg, #f59e0b, #d97706);
   color: white;
   padding: 2px 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   margin-left: 3px;
 }
 
@@ -425,7 +430,7 @@ export default {
 .player-status {
   font-size: 9px;
   padding: 3px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   margin-top: 4px;
   font-weight: 600;
   letter-spacing: 0.3px;
@@ -632,6 +637,14 @@ export default {
 }
 
 /* 本轮下注高亮 */
+.player-bet-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+  margin-top: 1px;
+}
+
 .round-bet {
   background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(22, 163, 74, 0.35) 100%) !important;
   color: #4ade80 !important;

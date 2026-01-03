@@ -87,14 +87,14 @@ export default {
   background: rgba(0,0,0,0.5);
   backdrop-filter: blur(10px);
   padding: 10px;
-  border-radius: 25px;
+  border-radius: var(--radius-3xl);
   border: 1px solid rgba(255,255,255,0.2);
 }
 
 .volume-slider {
   width: 100px;
   height: 5px;
-  border-radius: 5px;
+  border-radius: var(--radius-lg);
   background: rgba(255,255,255,0.3);
   outline: none;
   cursor: pointer;

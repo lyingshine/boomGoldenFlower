@@ -158,6 +158,7 @@ export default {
 <style scoped>
 .game-controls-wrapper.my-turn {
   border-color: rgba(255, 215, 0, 0.6) !important;
+  border-width: 2px !important;
   box-shadow: 
     0 -4px 20px rgba(0, 0, 0, 0.3),
     0 8px 32px rgba(0, 0, 0, 0.5),
@@ -189,24 +190,24 @@ export default {
 .game-controls {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
   width: 100%;
 }
 
 .controls-row {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   justify-content: center;
   flex-wrap: wrap;
   width: 100%;
 }
 
 .btn-large {
-  padding: 14px 28px;
-  font-size: 15px;
-  min-width: 140px;
-  border-radius: 12px;
+  padding: 8px 16px;
+  font-size: 12px;
+  min-width: 100px;
+  border-radius: var(--radius-xl);
   font-weight: 600;
   letter-spacing: 0.5px;
 }
@@ -250,36 +251,36 @@ export default {
 }
 
 .bet-row {
-  gap: 12px;
+  gap: 8px;
 }
 
 .bet-inline {
   display: flex;
   align-items: center;
   gap: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .adj-btn {
-  width: 36px;
-  height: 40px;
+  width: 26px;
+  height: 30px;
   border: none;
   background: rgba(255, 255, 255, 0.1);
   color: white;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .adj-btn:first-child {
-  border-radius: 10px 0 0 10px;
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
 }
 
 .adj-btn:last-child {
-  border-radius: 0 10px 10px 0;
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
 }
 
 .adj-btn:hover:not(:disabled) {
@@ -297,21 +298,21 @@ export default {
 
 .bet-inline .btn {
   border-radius: 0;
-  min-width: 110px;
-  padding: 12px 16px;
-  font-size: 14px;
+  min-width: 75px;
+  padding: 8px 10px;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .btn-small {
-  padding: 8px 14px !important;
-  font-size: 12px !important;
-  border-radius: 8px;
+  padding: 5px 10px !important;
+  font-size: 10px !important;
+  border-radius: var(--radius-lg);
   font-weight: 500;
 }
 
 .secondary-row {
-  gap: 12px;
+  gap: 8px;
 }
 
 .secondary-row .btn {
@@ -322,12 +323,12 @@ export default {
 .waiting-message {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 13px;
-  padding: 10px 18px;
+  font-size: 11px;
+  padding: 6px 10px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -347,10 +348,10 @@ export default {
 
 .folded-message {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 13px;
-  padding: 10px 18px;
+  font-size: 11px;
+  padding: 6px 10px;
   background: rgba(239, 68, 68, 0.1);
-  border-radius: 10px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 

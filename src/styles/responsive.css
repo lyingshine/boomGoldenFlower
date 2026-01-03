@@ -1,5 +1,37 @@
 /* 响应式设计 - 优化移动端体验 */
 
+/* 4人及以下居中布局 - 移动端 */
+@media (max-width: 768px) {
+  .players-area.centered-layout .player-seat.seat-0 {
+    left: calc(50% - 32px) !important;
+  }
+  .players-area.centered-layout .player-seat.seat-5 {
+    left: calc(50% - 32px) !important;
+  }
+  .players-area.centered-layout .player-seat.seat-6 {
+    top: calc(50% - 30px) !important;
+  }
+  .players-area.centered-layout .player-seat.seat-2 {
+    top: calc(50% - 30px) !important;
+  }
+}
+
+/* 4人及以下居中布局 - 桌面端 */
+@media (min-width: 769px) {
+  .players-area.centered-layout .player-seat.seat-0 {
+    left: calc(50% - 45px) !important;
+  }
+  .players-area.centered-layout .player-seat.seat-5 {
+    top: calc(50% - 40px) !important;
+  }
+  .players-area.centered-layout .player-seat.seat-6 {
+    top: calc(50% - 40px) !important;
+  }
+  .players-area.centered-layout .player-seat.seat-2 {
+    top: calc(50% - 40px) !important;
+  }
+}
+
 /* 平板设备 */
 @media (max-width: 1024px) {
   .new-game-table {

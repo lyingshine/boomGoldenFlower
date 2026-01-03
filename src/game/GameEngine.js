@@ -132,6 +132,14 @@ export class GameEngine extends EventEmitter {
 
     // 发牌完成，收取底注
     this.gameState.dealingComplete = true
+    
+    // 整理每个玩家的手牌
+    this.players.forEach(player => {
+      if (player !== null) {
+        player.hand.sort()
+      }
+    })
+    
     this.collectAntes()
     this.gameState.setPhase('betting')
     

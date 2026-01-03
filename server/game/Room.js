@@ -14,6 +14,7 @@ export class Room {
     this.game = new GameEngine(roomCode)
     this.aiCounter = 0
     this.gameStarted = false
+    this.hostSeatIndex = -1 // 房主座位
     // 断线玩家信息，用于重连
     this.disconnectedPlayers = new Map() // seatIndex -> { playerName, chips, disconnectedAt }
     this.reconnectTimeout = 5 * 60 * 1000 // 5分钟重连超时
@@ -27,6 +28,11 @@ export class Room {
 
     this.clients.set(clientId, { ws, playerName, seatIndex })
     this.game.addPlayer(seatIndex, playerName, chips, 'human')
+    
+    // 第一个加入的玩家是房主，记录座位
+    if (this.hostSeatIndex === -1) {
+      this.hostSeatIndex = seatIndex
+    }
     
     return { seatIndex }
   }
@@ -105,8 +111,16 @@ export class Room {
   }
 
   findEmptySeat() {
-    for (let i = 0; i < 8; i++) {
-      // 跳过断线玩家保留的座位
+    // 优先填充上下左右4个位置：底部(0)、顶部(5)、左侧(6)、右侧(2)
+    const prioritySeats = [0, 5, 6, 2]
+    const otherSeats = [1, 4, 7, 3]
+    
+    // 先找优先座位
+    for (const i of prioritySeats) {
+      if (!this.game.seats[i] && !this.disconnectedPlayers.has(i)) return i
+    }
+    // 再找其他座位
+    for (const i of otherSeats) {
       if (!this.game.seats[i] && !this.disconnectedPlayers.has(i)) return i
     }
     return -1

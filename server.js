@@ -333,7 +333,7 @@ function handleStartGame(clientId) {
     return
   }
   
-  const result = room.game.startRound()
+  const result = room.game.startRound(room.hostSeatIndex)
   if (!result.success) {
     send(client.ws, { type: 'start_failed', message: result.error })
     return

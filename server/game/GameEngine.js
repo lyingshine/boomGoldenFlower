@@ -35,7 +35,7 @@ export class GameEngine {
     return this.seats.filter(p => p && !p.folded && !p.isAllIn)
   }
 
-  startRound() {
+  startRound(hostSeatIndex = -1) {
     const players = this.seats.filter(p => p)
     if (players.length < 1) return { success: false, error: '没有玩家' }
 
@@ -45,7 +45,7 @@ export class GameEngine {
 
     const dealResult = this.dealCards()
     this.collectAntes()
-    this.setFirstPlayer()
+    this.setFirstPlayer(hostSeatIndex)
     
     // 先设置为发牌阶段，让客户端播放动画
     this.state.setPhase('dealing')
@@ -70,6 +70,12 @@ export class GameEngine {
         }
       }
     }
+    // 发牌完成后整理每个玩家的手牌
+    this.seats.forEach(player => {
+      if (player) {
+        player.hand.sort()
+      }
+    })
     return result
   }
 
@@ -86,7 +92,30 @@ export class GameEngine {
     })
   }
 
-  setFirstPlayer() {
+  setFirstPlayer(hostSeatIndex = -1) {
+    let startIndex = -1
+    
+    // 如果有上一局赢家，从赢家的下家开始
+    if (this.state.lastWinnerIndex >= 0 && this.seats[this.state.lastWinnerIndex]) {
+      startIndex = this.state.lastWinnerIndex
+    } 
+    // 第一局从房主的下家开始
+    else if (hostSeatIndex >= 0) {
+      startIndex = hostSeatIndex
+    }
+    
+    // 找到下一个有效玩家
+    if (startIndex >= 0) {
+      for (let i = 1; i <= 8; i++) {
+        const nextIndex = (startIndex + i) % 8
+        if (this.seats[nextIndex] && !this.seats[nextIndex].folded) {
+          this.state.currentPlayerIndex = nextIndex
+          return
+        }
+      }
+    }
+    
+    // 兜底：找第一个有效玩家
     for (let i = 0; i < 8; i++) {
       if (this.seats[i] && !this.seats[i].folded) {
         this.state.currentPlayerIndex = i
@@ -462,6 +491,7 @@ export class GameEngine {
       name: winner.name,
       handType: winner.hand.getType()
     }
+    this.state.lastWinnerIndex = winner.id // 记录赢家座位
     this.state.setPhase('ended')
 
     return {

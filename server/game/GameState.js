@@ -12,6 +12,7 @@ export class GameState {
     this.showdownReady = false
     this.winner = null
     this.showdownResult = null // 开牌结果
+    this.lastWinnerIndex = -1 // 上一局赢家座位
   }
 
   setPhase(phase) {
@@ -53,7 +54,8 @@ export class GameState {
       dealerIndex: this.dealerIndex,
       showdownReady: this.showdownReady,
       winner: this.winner,
-      showdownResult: this.showdownResult
+      showdownResult: this.showdownResult,
+      lastWinnerIndex: this.lastWinnerIndex
     }
   }
 }

@@ -19,6 +19,11 @@ export class Hand {
     return [...this.cards];
   }
 
+  // 整理手牌（按点数从大到小排序）
+  sort() {
+    this.cards.sort((a, b) => b.getValue() - a.getValue());
+  }
+
   // 清空手牌
   clear() {
     this.cards = [];
@@ -87,13 +92,7 @@ export class Hand {
     if (values[0] === 14 && values[1] === 3 && values[2] === 2) {
       return true;
     }
-    
-    // K-A-2 不是顺子（排除跨越情况）
-    if (values[0] === 14 && values[1] === 13) {
-      return false;
-    }
-    
-    // 普通顺子：连续递减
+    // 普通顺子：连续递减（Q-K-A 会正确判断，K-A-2 会被排除）
     return values[0] - values[1] === 1 && values[1] - values[2] === 1;
   }
 

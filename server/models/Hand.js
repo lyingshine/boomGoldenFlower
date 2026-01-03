@@ -17,6 +17,11 @@ export class Hand {
     this.cards = []
   }
 
+  // 整理手牌（按点数从大到小排序）
+  sort() {
+    this.cards.sort((a, b) => b.getValue() - a.getValue())
+  }
+
   getType() {
     if (this.cards.length !== 3) return { type: 'incomplete', weight: 0 }
 
@@ -61,8 +66,9 @@ export class Hand {
   }
 
   checkStraight(values) {
+    // A-2-3 特殊顺子（最小）
     if (values[0] === 14 && values[1] === 3 && values[2] === 2) return true
-    if (values[0] === 14 && values[1] === 13) return false
+    // 普通顺子：连续递减（Q-K-A 会正确判断，K-A-2 会被排除）
     return values[0] - values[1] === 1 && values[1] - values[2] === 1
   }
 

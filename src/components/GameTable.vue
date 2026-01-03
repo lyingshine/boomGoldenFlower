@@ -32,7 +32,7 @@
     </div>
 
     <!-- 玩家座位 - 只显示有玩家的座位 -->
-    <div class="players-area">
+    <div class="players-area" :class="{ 'centered-layout': playerCount <= 4 }">
       <div
         v-for="(player, index) in allSeats"
         :key="index"
@@ -120,6 +120,19 @@ export default {
     this.displayPot = this.pot
   },
   computed: {
+    // 玩家数量
+    playerCount() {
+      return this.allSeats.filter(p => p).length
+    },
+    // 座位映射：≤4人时居中显示
+    seatMapping() {
+      if (this.playerCount <= 4) {
+        // 4人及以下：映射到上下左右4个居中位置
+        // 原座位 0,5,6,2 -> 显示位置 0,5,6,2（保持不变，这4个就是居中位置）
+        return { 0: 0, 5: 5, 6: 6, 2: 2, 1: 1, 4: 4, 7: 7, 3: 3 }
+      }
+      return null // 不需要映射
+    },
     currentPlayerName() {
       if (this.gamePhase !== 'betting') return null
       const player = this.allSeats[this.currentPlayerIndex]

@@ -204,9 +204,9 @@ export default {
 }
 
 .btn-large {
-  padding: 8px 16px;
-  font-size: 12px;
-  min-width: 100px;
+  padding: 10px 20px;
+  font-size: 15px;
+  min-width: 110px;
   border-radius: var(--radius-xl);
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -264,12 +264,12 @@ export default {
 }
 
 .adj-btn {
-  width: 26px;
-  height: 30px;
+  width: 32px;
+  height: 38px;
   border: none;
   background: rgba(255, 255, 255, 0.1);
   color: white;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
@@ -298,15 +298,15 @@ export default {
 
 .bet-inline .btn {
   border-radius: 0;
-  min-width: 75px;
-  padding: 8px 10px;
-  font-size: 11px;
+  min-width: 90px;
+  padding: 10px 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .btn-small {
-  padding: 5px 10px !important;
-  font-size: 10px !important;
+  padding: 8px 14px !important;
+  font-size: 13px !important;
   border-radius: var(--radius-lg);
   font-weight: 500;
 }
@@ -325,8 +325,8 @@ export default {
   align-items: center;
   gap: 5px;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 11px;
-  padding: 6px 10px;
+  font-size: 14px;
+  padding: 8px 14px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-xl);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -348,8 +348,8 @@ export default {
 
 .folded-message {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 11px;
-  padding: 6px 10px;
+  font-size: 14px;
+  padding: 8px 14px;
   background: rgba(239, 68, 68, 0.1);
   border-radius: var(--radius-xl);
   border: 1px solid rgba(239, 68, 68, 0.2);

@@ -470,23 +470,38 @@ function processAITurn(room) {
     // 重新检查游戏状态
     if (game.state.phase !== 'betting') return
     
-    const decision = game.makeAIDecision(game.state.currentPlayerIndex)
+    const seatIndex = game.state.currentPlayerIndex
+    const player = game.seats[seatIndex]
+    const decision = game.makeAIDecision(seatIndex)
     if (!decision) return
     
-    console.log(`🤖 AI决策: 座位${game.state.currentPlayerIndex} ${decision.action}`)
+    console.log(`🤖 AI决策: 座位${seatIndex} ${decision.action}`)
     
-    const result = game.handleAction(
-      game.state.currentPlayerIndex,
-      decision.action,
-      decision.amount
-    )
+    const result = game.handleAction(seatIndex, decision.action, decision.amount)
     
     if (result.success) {
+      // 生成 AI 聊天消息
+      const messageContext = {
+        hasStrongHand: player.hasPeeked && player.hand.getType().weight >= 7000,
+        opponentAggressive: activePlayers.some(p => p.id !== seatIndex && p.lastBetAmount > 25)
+      }
+      const chatMessage = game.generateAIMessage(seatIndex, decision.action, messageContext)
+      
       room.broadcast({
         type: 'action_result',
         ...result,
         isAI: true
       })
+      
+      // 广播 AI 聊天消息
+      if (chatMessage) {
+        room.broadcast({
+          type: 'chat_message',
+          ...chatMessage,
+          isAI: true
+        })
+      }
+      
       room.broadcastGameState()
       
       // 继续处理下一个AI

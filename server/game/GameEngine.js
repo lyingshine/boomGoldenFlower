@@ -518,8 +518,6 @@ export class GameEngine {
     const player = this.seats[seatIndex]
     if (!player || player.type !== 'ai') return null
 
-    const handType = player.hand.getType()
-    const strength = handType.weight
     const activePlayers = this.getActivePlayers().filter(p => p.id !== seatIndex)
     const callAmount = this.getCallAmountForPlayer(player)
     const potOdds = callAmount / (this.state.pot + callAmount)
@@ -542,27 +540,8 @@ export class GameEngine {
     const likelyBluffingCount = opponentAnalysis.filter(a => a.behavior.likelyBluffing).length
     const likelyStrongCount = opponentAnalysis.filter(a => a.behavior.likelyStrong).length
     
-    // 分析对手下注模式
-    const maxOpponentBet = Math.max(...activePlayers.map(p => p.lastBetAmount || 0), 0)
-    const avgOpponentBet = activePlayers.reduce((sum, p) => sum + (p.lastBetAmount || 0), 0) / (totalOpponents || 1)
-    
-    // 牌型分类（诈金花牌型权重）
-    const isMonster = strength >= 9000  // 豹子(10000)、同花顺(9500)
-    const isStrong = strength >= 7000   // 同花(8000)、顺子(7500)
-    const isMedium = strength >= 5000   // 对子(5000-6999)
-    const isWeak = strength < 5000      // 散牌(1000-4999)
-    
-    // 计算相对牌力（考虑对手数量和行为）
-    let relativeStrength = this.estimateWinProbability(strength, totalOpponents)
-    // 如果对手看起来很强，降低相对牌力评估
-    if (likelyStrongCount > 0) relativeStrength *= 0.8
-    // 如果对手可能在诈，提高相对牌力评估
-    if (likelyBluffingCount > 0) relativeStrength *= 1.15
-
     // 筹码压力分析
     const chipPressure = callAmount / player.chips
-    const isShortStack = player.chips < callAmount * 5
-    const isBigStack = player.chips > callAmount * 20
     
     // 底池价值分析
     const potValue = this.state.pot
@@ -570,168 +549,155 @@ export class GameEngine {
 
     // ========== 筹码不足时的决策 ==========
     if (player.chips < callAmount) {
-      // 短筹码全押决策
-      if (isStrong || isMonster) return { action: 'call' }
-      if (isMedium && relativeStrength > 0.4) return { action: 'call' }
-      if (isWeak && relativeStrength > 0.6 && Math.random() > 0.5) return { action: 'call' }
+      // 焖牌状态：不知道牌力，根据底池赔率和随机决定
+      if (!player.hasPeeked) {
+        // 底池大时更愿意搏一把
+        if (potToChipRatio > 0.5 && Math.random() > 0.4) return { action: 'call' }
+        if (Math.random() > 0.6) return { action: 'call' }
+        return { action: 'fold' }
+      }
+      // 已看牌：根据真实牌力决定
+      const handType = player.hand.getType()
+      const strength = handType.weight
+      if (strength >= 7000) return { action: 'call' }
+      if (strength >= 5000 && Math.random() > 0.4) return { action: 'call' }
+      if (Math.random() > 0.7) return { action: 'call' }
       return { action: 'fold' }
     }
 
-    // ========== 看牌决策 ==========
+    // ========== 焖牌状态的决策（不能看牌力！）==========
     if (!player.hasPeeked) {
-      // 诈金花策略：焖牌是重要策略，不要轻易看牌
-      
-      // 怪兽牌：慢玩，先焖几轮再看
-      if (isMonster) {
-        if (round <= 2 && Math.random() > 0.3) {
-          // 前两轮焖牌慢玩
-          return this.makeBlindBet(player, callAmount, true)
-        }
-        return { action: 'peek' }
-      }
-      
-      // 强牌：根据对手行为决定
-      if (isStrong) {
-        // 对手激进时看牌准备反击
-        if (aggressiveCount > 0 && Math.random() > 0.4) {
-          return { action: 'peek' }
-        }
-        // 否则继续焖
-        if (Math.random() > 0.5) {
-          return this.makeBlindBet(player, callAmount, false)
-        }
-        return { action: 'peek' }
-      }
-      
-      // 中等牌：倾向焖牌
-      if (isMedium) {
-        // 对手都在焖，继续焖
-        if (blindOpponents.length >= peekedOpponents.length) {
-          return this.makeBlindBet(player, callAmount, false)
-        }
-        // 有人看牌了，考虑也看
-        if (Math.random() > 0.6) {
-          return { action: 'peek' }
-        }
-        return this.makeBlindBet(player, callAmount, false)
-      }
-      
-      // 弱牌：焖牌虚张声势是关键策略
-      if (isWeak) {
-        // 弱牌看了就没优势了，坚持焖
-        // 但如果底池太大或对手太激进，考虑弃牌
-        if (chipPressure > 0.3 && Math.random() > 0.4) {
-          return { action: 'fold' }
-        }
-        if (aggressiveCount >= 2 && Math.random() > 0.3) {
-          return { action: 'fold' }
-        }
-        // 如果有对手看起来很强，更容易弃牌
-        if (likelyStrongCount > 0 && Math.random() > 0.4) {
-          return { action: 'fold' }
-        }
-        // 虚张声势焖牌
-        if (Math.random() > 0.3) {
-          // 底池大时加大虚张声势力度
-          const shouldBluffHard = potToChipRatio > 0.3 && Math.random() > 0.5
-          return this.makeBlindBet(player, callAmount, shouldBluffHard)
-        }
-        return { action: 'fold' }
-      }
+      return this.makeBlindDecision(player, callAmount, {
+        round,
+        totalOpponents,
+        blindOpponents,
+        peekedOpponents,
+        aggressiveCount,
+        likelyStrongCount,
+        likelyBluffingCount,
+        chipPressure,
+        potToChipRatio,
+        potOdds
+      })
     }
 
-    // ========== 已看牌后的决策 ==========
+    // ========== 已看牌后的决策（可以使用真实牌力）==========
+    const handType = player.hand.getType()
+    const strength = handType.weight
     
-    // 开牌决策 - 降低开牌概率，让游戏更持久
+    // 牌型分类
+    const isMonster = strength >= 9000  // 豹子、同花顺
+    const isStrong = strength >= 7000   // 同花、顺子
+    const isMedium = strength >= 5000   // 对子
+    const isWeak = strength < 5000      // 散牌
+    
+    // 开牌决策
     if (activePlayers.length >= 1) {
-      // 怪兽牌：不急着开牌，先加注榨取价值
-      if (isMonster) {
-        // 只有30%概率开牌
-        if (Math.random() > 0.7) {
-          const target = this.findBestShowdownTarget(activePlayers)
-          if (target) return { action: 'showdown', amount: target.id }
-        }
+      if (isMonster && Math.random() > 0.7) {
+        const target = this.findBestShowdownTarget(activePlayers)
+        if (target) return { action: 'showdown', amount: target.id }
       }
-      
-      // 强牌：更低概率开牌
-      if (isStrong) {
-        // 只剩一个对手时20%概率开牌
-        if (totalOpponents === 1 && Math.random() > 0.8) {
-          return { action: 'showdown', amount: activePlayers[0].id }
-        }
+      if (isStrong && totalOpponents === 1 && Math.random() > 0.8) {
+        return { action: 'showdown', amount: activePlayers[0].id }
       }
-      
-      // 中等牌：很少开牌
-      if (isMedium && totalOpponents === 1) {
-        // 10%概率开牌
-        if (Math.random() > 0.9) {
-          return { action: 'showdown', amount: activePlayers[0].id }
-        }
+      if (isMedium && totalOpponents === 1 && Math.random() > 0.9) {
+        return { action: 'showdown', amount: activePlayers[0].id }
       }
     }
 
-    // ========== 下注决策 ==========
-    
-    // 怪兽牌：价值下注
+    // 下注决策
     if (isMonster) {
-      // 不要加注太多吓跑对手
-      const raiseAmount = Math.min(
-        20 + Math.floor(Math.random() * 20),
-        player.chips - callAmount
-      )
+      const raiseAmount = Math.min(20 + Math.floor(Math.random() * 20), player.chips - callAmount)
       if (raiseAmount > 0 && Math.random() > 0.2) {
         return { action: 'raise', amount: raiseAmount }
       }
       return { action: 'call' }
     }
     
-    // 强牌：中等加注
     if (isStrong) {
       if (Math.random() > 0.3) {
-        const raiseAmount = Math.min(
-          15 + Math.floor(Math.random() * 15),
-          player.chips - callAmount
-        )
-        if (raiseAmount > 0) {
-          return { action: 'raise', amount: raiseAmount }
-        }
+        const raiseAmount = Math.min(15 + Math.floor(Math.random() * 15), player.chips - callAmount)
+        if (raiseAmount > 0) return { action: 'raise', amount: raiseAmount }
       }
       return { action: 'call' }
     }
     
-    // 中等牌：跟注为主
     if (isMedium) {
-      // 对手下注太大时考虑弃牌
-      if (chipPressure > 0.25 && Math.random() > 0.6) {
-        return { action: 'fold' }
-      }
-      // 偶尔小加注
-      if (Math.random() > 0.8) {
-        return { action: 'raise', amount: 10 }
-      }
+      if (chipPressure > 0.25 && Math.random() > 0.6) return { action: 'fold' }
+      if (Math.random() > 0.8) return { action: 'raise', amount: 10 }
       return { action: 'call' }
     }
     
-    // 弱牌：已看牌的弱牌很被动
-    if (isWeak) {
-      // 对手激进时弃牌
-      if (aggressiveOpponents > 0 || chipPressure > 0.15) {
-        if (Math.random() > 0.2) {
-          return { action: 'fold' }
-        }
-      }
-      // 底池赔率不好时弃牌
-      if (potOdds > 0.35) {
-        return { action: 'fold' }
-      }
-      // 小概率跟注（诈一下）
-      if (Math.random() > 0.7) {
-        return { action: 'call' }
-      }
+    // 弱牌
+    if (aggressiveCount > 0 || chipPressure > 0.15) {
+      if (Math.random() > 0.2) return { action: 'fold' }
+    }
+    if (potOdds > 0.35) return { action: 'fold' }
+    if (Math.random() > 0.7) return { action: 'call' }
+    return { action: 'fold' }
+  }
+
+  // 焖牌状态的决策（完全不看牌力）
+  makeBlindDecision(player, callAmount, context) {
+    const {
+      round,
+      totalOpponents,
+      blindOpponents,
+      peekedOpponents,
+      aggressiveCount,
+      likelyStrongCount,
+      likelyBluffingCount,
+      chipPressure,
+      potToChipRatio,
+      potOdds
+    } = context
+
+    // 基础继续概率（随机性是焖牌的核心）
+    let continueChance = 0.7  // 70%基础继续率
+    
+    // 根据对手行为调整
+    if (aggressiveCount >= 2) continueChance -= 0.2  // 多个激进对手，降低继续率
+    if (likelyStrongCount > 0) continueChance -= 0.15  // 有人看起来很强
+    if (likelyBluffingCount > 0) continueChance += 0.1  // 有人可能在诈
+    
+    // 根据筹码压力调整
+    if (chipPressure > 0.3) continueChance -= 0.2
+    if (chipPressure > 0.5) continueChance -= 0.2
+    
+    // 底池大时更愿意继续
+    if (potToChipRatio > 0.3) continueChance += 0.1
+    
+    // 回合数影响：后期更谨慎
+    if (round > 3) continueChance -= 0.1
+    
+    // 确保概率在合理范围
+    continueChance = Math.max(0.2, Math.min(0.85, continueChance))
+
+    // 决定是否继续
+    if (Math.random() > continueChance) {
       return { action: 'fold' }
     }
 
-    return { action: 'fold' }
+    // 决定是否看牌
+    let peekChance = 0.25  // 25%基础看牌率
+    if (round >= 3) peekChance += 0.15  // 后期更想看牌
+    if (peekedOpponents.length > blindOpponents.length) peekChance += 0.2  // 多数人看了
+    if (aggressiveCount > 0) peekChance += 0.15  // 对手激进时想看牌应对
+    if (chipPressure > 0.25) peekChance += 0.1  // 压力大时想看牌
+    
+    if (Math.random() < peekChance) {
+      return { action: 'peek' }
+    }
+
+    // 继续焖牌
+    // 决定是否加注（虚张声势）
+    let raiseChance = 0.2  // 20%基础加注率
+    if (blindOpponents.length > peekedOpponents.length) raiseChance += 0.1  // 大家都焖，可以诈
+    if (potToChipRatio > 0.3) raiseChance += 0.1  // 底池大，值得诈
+    if (likelyBluffingCount > 0) raiseChance -= 0.1  // 别人也在诈，收敛点
+    
+    const shouldRaise = Math.random() < raiseChance && player.chips > callAmount + 10
+    return this.makeBlindBet(player, callAmount, shouldRaise)
   }
 
   // 焖牌下注
@@ -855,6 +821,280 @@ export class GameEngine {
       isTight: profile.foldCount / totalActions > 0.4,
       isLoose: profile.foldCount / totalActions < 0.2
     }
+  }
+
+  // AI 生成聊天消息
+  generateAIMessage(seatIndex, action, context = {}) {
+    const player = this.seats[seatIndex]
+    if (!player || player.type !== 'ai') return null
+
+    // 50% 概率发消息
+    if (Math.random() > 0.5) return null
+
+    const messages = this.getAIMessagePool(action, context)
+    if (!messages || messages.length === 0) return null
+
+    const message = messages[Math.floor(Math.random() * messages.length)]
+    return { seatIndex, playerName: player.name, message }
+  }
+
+  // 获取 AI 消息池
+  getAIMessagePool(action, context) {
+    const { isBluffing, hasStrongHand, opponentAggressive } = context
+
+    const pools = {
+      // 焖牌消息
+      blind: [
+        '不看了，直接焖！',
+        '焖到底！',
+        '我有信心',
+        '来吧，跟不跟？',
+        '这把稳了',
+        '焖牌才刺激',
+        '不用看，感觉不错',
+        '闭着眼都能赢',
+        '今天手气好',
+        '就这样焖着',
+        '焖！',
+        '继续焖',
+        '不看牌更刺激',
+        '盲打到底',
+        '我就不看',
+        '焖牌是艺术',
+        '相信直觉',
+        '感觉来了',
+        '这把有戏',
+        '稳住，我们能赢',
+        '焖牌王者',
+        '不看也能赢',
+        '就是这么自信',
+        '跟着感觉走',
+        '今天运气不错'
+      ],
+      // 跟注消息
+      call: [
+        '跟了',
+        '我跟',
+        '看看再说',
+        '不急',
+        '慢慢来',
+        '跟一个',
+        '还行吧',
+        '继续',
+        '跟着',
+        '没问题',
+        '可以',
+        '行吧',
+        '跟上',
+        '我也跟',
+        '不多不少',
+        '刚刚好',
+        '稳扎稳打',
+        '先跟着看看',
+        '不着急',
+        '慢慢玩'
+      ],
+      // 加注消息
+      raise: [
+        '加点！',
+        '来真的了',
+        '敢不敢跟？',
+        '加注！',
+        '不服来战',
+        '小意思',
+        '再加点',
+        '有胆就跟',
+        '加！',
+        '来劲了',
+        '上强度',
+        '玩大的',
+        '加码！',
+        '谁怕谁',
+        '继续加',
+        '不够刺激',
+        '再来！',
+        '加满！',
+        '豁出去了',
+        '梭哈精神',
+        '就是要加',
+        '怕了吗？',
+        '来点刺激的',
+        '加注见真章',
+        '真金白银'
+      ],
+      // 弃牌消息
+      fold: [
+        '算了算了',
+        '这把不玩了',
+        '下把再来',
+        '溜了溜了',
+        '不跟了',
+        '你们玩',
+        '弃了',
+        '等下一把',
+        '告辞',
+        '我先撤',
+        '不陪了',
+        '下次再战',
+        '认输',
+        '这把没戏',
+        '收手了',
+        '见好就收',
+        '战略撤退',
+        '保存实力',
+        '留得青山在',
+        '下把翻盘'
+      ],
+      // 看牌消息
+      peek: [
+        '看看牌',
+        '让我瞧瞧',
+        '看一眼',
+        '偷偷看下',
+        '看看什么牌',
+        '揭晓答案',
+        '终于忍不住了',
+        '看看运气如何'
+      ],
+      // 开牌消息
+      showdown: [
+        '开！',
+        '来比比！',
+        '亮牌吧！',
+        '不信你比我大',
+        '开牌定胜负！',
+        '摊牌了！',
+        '见真章！',
+        '比比看！',
+        '一决高下！',
+        '揭晓时刻！',
+        '来吧，开牌！',
+        '不装了，开！',
+        '是骡子是马，拉出来溜溜'
+      ],
+      // 虚张声势（焖牌时的嘴炮）
+      bluffing: [
+        '怕了吧？',
+        '我牌很大的',
+        '你们最好弃牌',
+        '这把我赢定了',
+        '不信你试试',
+        '哼哼',
+        '稳如老狗',
+        '你们没机会的',
+        '认输吧',
+        '别挣扎了',
+        '大牌在手',
+        '今天是我的',
+        '你们输定了',
+        '乖乖弃牌吧',
+        '别浪费筹码了',
+        '我已经赢了',
+        '就这？',
+        '太简单了',
+        '小场面',
+        '稳得一批'
+      ],
+      // 真正有大牌时的迷惑消息
+      strongButHumble: [
+        '唉，牌不太好',
+        '随便跟跟',
+        '凑合吧',
+        '一般般',
+        '不太行啊',
+        '算了，跟一个',
+        '牌不咋地',
+        '将就着玩',
+        '没什么好牌',
+        '运气不好',
+        '今天手气差',
+        '随便玩玩',
+        '无所谓了',
+        '混混看吧',
+        '不抱希望',
+        '听天由命',
+        '随缘吧',
+        '差不多得了',
+        '意思意思',
+        '玩玩而已'
+      ],
+      // 对手激进时的回应
+      responseToAggressive: [
+        '别吓我',
+        '你在诈我？',
+        '我不信',
+        '真有那么大？',
+        '虚张声势吧',
+        '我看你在诈',
+        '少来这套',
+        '吓唬谁呢',
+        '我不怕',
+        '来就来',
+        '谁怕谁啊',
+        '有本事开牌',
+        '别装了',
+        '我看穿你了',
+        '诈我？没门',
+        '你诈不到我',
+        '演技不行啊',
+        '太假了',
+        '我就不信',
+        '放马过来'
+      ],
+      // 赢牌后的得意
+      winning: [
+        '哈哈哈',
+        '谢谢款待',
+        '承让承让',
+        '运气好而已',
+        '小赢一把',
+        '今天手气不错',
+        '再来一把？',
+        '这把稳了',
+        '意料之中',
+        '太简单了'
+      ],
+      // 输牌后的反应
+      losing: [
+        '下把翻盘',
+        '运气不好',
+        '再来！',
+        '不服再战',
+        '手气差',
+        '下把一定赢',
+        '等着瞧',
+        '这把不算',
+        '热身而已',
+        '马上回本'
+      ],
+      // 观战/等待时的闲聊
+      idle: [
+        '快点啊',
+        '想好了没',
+        '别磨蹭',
+        '时间宝贵',
+        '抓紧时间',
+        '等得花儿都谢了',
+        '睡着了？',
+        '醒醒',
+        '该你了',
+        '别发呆'
+      ]
+    }
+
+    // 根据上下文选择消息池
+    if (action === 'blind' || action === 'call' || action === 'raise') {
+      // 已看牌且有大牌，用迷惑性消息
+      if (hasStrongHand && Math.random() > 0.5) {
+        return pools.strongButHumble
+      }
+      // 对手激进时
+      if (opponentAggressive && Math.random() > 0.6) {
+        return pools.responseToAggressive
+      }
+    }
+
+    return pools[action] || null
   }
 
   getStateForPlayer(seatIndex) {

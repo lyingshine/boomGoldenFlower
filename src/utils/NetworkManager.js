@@ -33,6 +33,7 @@ export class NetworkManager {
     this.onReconnectFailed = null
     this.onPlayerDisconnected = null
     this.onPlayerReconnected = null
+    this.onChatMessage = null
     
     // 自动重连
     this.reconnectAttempts = 0
@@ -281,6 +282,10 @@ export class NetworkManager {
         
       case 'get_user_result':
         if (this.onGetUserResult) this.onGetUserResult(message)
+        break
+        
+      case 'chat_message':
+        if (this.onChatMessage) this.onChatMessage(message)
         break
     }
   }

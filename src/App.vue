@@ -46,6 +46,7 @@
         :showdown-result="showdownResultDisplay"
         :showdown-mode="showdownMode"
         :showdown-preview="showdownPreview"
+        :chat-messages="chatMessages"
         @card-click="onCardClick"
         @player-click="onPlayerClick"
       />
@@ -107,7 +108,8 @@ export default {
       showdownResultDisplay: null,
       showdownMode: false,
       showdownPreview: null,  // 开牌时展示对手手牌
-      pendingShowdownTarget: null  // 等待开牌结果的目标
+      pendingShowdownTarget: null,  // 等待开牌结果的目标
+      chatMessages: []  // 聊天消息列表
     }
   },
   computed: {
@@ -222,6 +224,7 @@ export default {
       nm.onGameState = (state) => this.handleGameState(state)
       nm.onActionResult = (result) => this.handleActionResult(result)
       nm.onActionFailed = (msg) => alert(msg)
+      nm.onChatMessage = (msg) => this.handleChatMessage(msg)
     },
     updateLobbyPlayers(players) {
       if (!players) return
@@ -244,6 +247,16 @@ export default {
         this.showLobbyModal = false
       }
       
+      // 发牌阶段播放发牌音效
+      if (this.gameState.phase === 'dealing' && prevPhase !== 'dealing') {
+        // 模拟发牌音效序列，与动画同步（每张牌间隔0.3秒）
+        const playerCount = this.players.length
+        const totalCards = playerCount * 3
+        for (let i = 0; i < totalCards; i++) {
+          setTimeout(() => this.soundManager?.play('card'), i * 300)
+        }
+      }
+      
       // 轮到我时播放提示音
       if (this.gameState.phase === 'betting' && 
           this.gameState.isMyTurn() && 
@@ -251,14 +264,38 @@ export default {
         this.soundManager?.play('turn')
       }
       
-      // 游戏结束时播放获胜音效
+      // 游戏结束时播放音效
       if (this.gameState.phase === 'ended' && prevPhase !== 'ended') {
-        this.soundManager?.play('win')
+        const winner = this.gameState.winner
+        const isMyWin = winner && winner.seatIndex === this.mySeatIndex
+        
+        // 根据牌型播放特殊音效
+        if (winner?.handType) {
+          this.soundManager?.playHandTypeSound(winner.handType)
+        }
+        
+        // 延迟播放胜负音效
+        setTimeout(() => {
+          if (isMyWin) {
+            this.soundManager?.play('win')
+          } else {
+            this.soundManager?.play('lose')
+          }
+        }, 600)
       }
     },
     handleActionResult(result) {
-      if (['call', 'raise', 'allin', 'blind'].includes(result.action)) {
+      // 下注相关音效
+      if (['call', 'blind'].includes(result.action)) {
         this.soundManager?.play('chip')
+      }
+      if (['raise', 'allin'].includes(result.action)) {
+        // 大额下注用更震撼的音效
+        if (result.amount >= 50) {
+          this.soundManager?.play('bigBet')
+        } else {
+          this.soundManager?.play('chip')
+        }
       }
       if (result.action === 'peek') {
         this.soundManager?.play('peek')
@@ -267,8 +304,7 @@ export default {
         this.soundManager?.play('fold')
       }
       if (result.action === 'showdown') {
-        this.soundManager?.play('chip')
-        // 显示开牌结果
+        this.soundManager?.play('showdown')
         this.showShowdownResult(result)
       }
     },
@@ -412,6 +448,30 @@ export default {
           this.showdownMode = false
         }
       }
+    },
+    handleChatMessage(msg) {
+      const msgId = Date.now() + Math.random()
+      // 添加消息到列表
+      this.chatMessages.push({
+        id: msgId,
+        seatIndex: msg.seatIndex,
+        playerName: msg.playerName,
+        message: msg.message,
+        isAI: msg.isAI
+      })
+      
+      // 同一玩家只保留最新消息
+      const seen = new Set()
+      this.chatMessages = this.chatMessages.filter(m => {
+        if (seen.has(m.seatIndex)) return false
+        seen.add(m.seatIndex)
+        return true
+      }).slice(-8)
+      
+      // 4 秒后移除该消息
+      setTimeout(() => {
+        this.chatMessages = this.chatMessages.filter(m => m.id !== msgId)
+      }, 4000)
     }
   }
 }

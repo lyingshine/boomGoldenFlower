@@ -180,80 +180,105 @@
 /* 房间码显示 */
 .room-code-display {
   margin: 20px 0;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: var(--radius-2xl);
-  border: 1px solid rgba(255, 215, 0, 0.25);
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.25) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 215, 0, 0.15);
 }
 
 .room-code-label {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 8px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 10px;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
+  font-weight: 500;
 }
 
 .room-code {
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 36px;
+  font-weight: 800;
   color: #ffd700;
-  letter-spacing: 6px;
+  letter-spacing: 8px;
   font-family: 'Courier New', monospace;
-  text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-  margin-bottom: 6px;
+  text-shadow: 
+    0 0 30px rgba(255, 215, 0, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.8);
+  margin-bottom: 8px;
 }
 
 .room-code-hint {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
-  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 10px;
 }
 
 /* 游戏大厅样式 */
 .lobby-container {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 100;
-  width: 90%;
-  max-width: 400px;
-  max-height: 80vh;
-  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: 
+    radial-gradient(ellipse at top, 
+      #1a1a2e 0%, 
+      #16213e 30%, 
+      #0f172a 70%, 
+      #020617 100%
+    );
 }
 
 .lobby-panel {
-  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-  border: 2px solid rgba(255, 215, 0, 0.4);
-  border-radius: var(--radius-3xl);
+  width: 92%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: linear-gradient(170deg, 
+    rgba(30, 41, 59, 0.97) 0%, 
+    rgba(15, 23, 42, 0.98) 50%,
+    rgba(10, 15, 30, 0.99) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 24px;
   padding: 24px 28px;
   text-align: center;
   box-shadow: 
-    0 20px 50px rgba(0, 0, 0, 0.6),
-    0 0 40px rgba(255, 215, 0, 0.12);
+    0 25px 80px rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(255, 215, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
 }
 
 .lobby-title {
-  font-size: 24px;
+  font-size: 28px;
   color: #ffd700;
   margin: 0 0 6px 0;
-  text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+  font-weight: 800;
+  letter-spacing: 4px;
+  text-shadow: 
+    0 0 30px rgba(255, 215, 0, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .lobby-welcome {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0 0 18px 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 0 20px 0;
 }
 
 .lobby-welcome strong {
-  color: #ffd700;
+  color: rgba(255, 215, 0, 0.8);
+  font-weight: 600;
 }
 
 .lobby-subtitle {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
   margin-bottom: 16px;
   font-weight: 500;
 }
@@ -301,25 +326,28 @@
 .mode-selection {
   display: flex;
   gap: 16px;
-  margin: 28px 0;
+  margin: 0 0 24px 0;
 }
 
 .mode-btn {
   flex: 1;
-  padding: 28px 20px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-2xl);
+  padding: 24px 16px;
+  background: linear-gradient(165deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: white;
+  position: relative;
+  overflow: hidden;
 }
 
 .mode-btn:hover:not(:disabled) {
-  border-color: rgba(255, 215, 0, 0.6);
-  background: rgba(255, 215, 0, 0.08);
+  border-color: rgba(255, 215, 0, 0.3);
   transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(255, 215, 0, 0.2);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(255, 215, 0, 0.1);
 }
 
 .mode-btn:disabled {
@@ -328,20 +356,21 @@
 }
 
 .mode-icon {
-  font-size: 42px;
+  font-size: 36px;
   margin-bottom: 12px;
 }
 
 .mode-title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: #ffd700;
   margin-bottom: 6px;
+  letter-spacing: 0.5px;
 }
 
 .mode-desc {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .lobby-content {
@@ -353,37 +382,40 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 18px;
-  padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: var(--radius-xl);
+  padding: 14px 18px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .lobby-room-code {
   margin-bottom: 20px;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: var(--radius-2xl);
-  border: 1px solid rgba(255, 215, 0, 0.25);
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.25) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 215, 0, 0.15);
 }
 
 .lobby-mode-badge {
-  font-size: 13px;
-  color: #ffd700;
+  font-size: 12px;
+  color: rgba(255, 215, 0, 0.8);
   font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .lobby-player-count {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .lobby-players {
   max-height: 280px;
   overflow-y: auto;
   margin-bottom: 20px;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: var(--radius-xl);
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .lobby-player-card {
@@ -391,9 +423,9 @@
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-xl);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
   margin-bottom: 10px;
   transition: all 0.2s ease;
 }
@@ -403,21 +435,20 @@
 }
 
 .lobby-player-card:hover {
-  border-color: rgba(255, 215, 0, 0.3);
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .lobby-player-avatar {
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  background: linear-gradient(135deg, #ffd700, #b8860b);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
-  border: 2px solid #8b6914;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(139, 105, 20, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .lobby-player-info {
@@ -426,7 +457,7 @@
 }
 
 .lobby-player-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: white;
   margin-bottom: 4px;
@@ -436,15 +467,16 @@
   font-size: 13px;
   color: #4ade80;
   font-family: 'Courier New', monospace;
+  font-weight: 600;
 }
 
 .lobby-remove-btn {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(239, 68, 68, 0.7);
-  color: white;
-  border: none;
+  background: rgba(239, 68, 68, 0.2);
+  color: rgba(239, 68, 68, 0.8);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s ease;
@@ -454,8 +486,8 @@
 }
 
 .lobby-remove-btn:hover {
-  background: rgba(239, 68, 68, 1);
-  transform: scale(1.1);
+  background: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
 }
 
 .lobby-actions {
@@ -467,16 +499,17 @@
 .lobby-btn {
   flex: 1;
   min-width: 100px;
-  padding: 12px 16px;
+  padding: 14px 18px;
   font-size: 14px;
+  border-radius: 12px;
 }
 
 .join-room-form {
-  margin-top: 20px;
+  margin-top: 0;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: var(--radius-2xl);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .room-search-result {
@@ -659,9 +692,9 @@
 /* 全新牌桌设计 - 视觉焦点优化 */
 .new-game-table {
   position: relative;
-  width: 600px;
+  width: 480px;
   max-width: 92vw;
-  height: 360px;
+  height: 290px;
   background: 
     radial-gradient(ellipse at center,
       #16a34a 0%,
@@ -670,13 +703,13 @@
       #14532d 100%
     );
   border-radius: var(--radius-full);
-  border: 8px solid #5d4037;
+  border: 6px solid #5d4037;
   box-shadow: 
-    0 15px 40px rgba(0, 0, 0, 0.6),
-    inset 0 0 60px rgba(0, 0, 0, 0.3),
-    0 0 0 3px rgba(255, 215, 0, 0.15),
-    0 0 80px rgba(34, 197, 94, 0.1);
-  margin: calc(180px + env(safe-area-inset-top)) auto 120px auto;
+    0 12px 30px rgba(0, 0, 0, 0.6),
+    inset 0 0 50px rgba(0, 0, 0, 0.3),
+    0 0 0 2px rgba(255, 215, 0, 0.15),
+    0 0 60px rgba(34, 197, 94, 0.1);
+  margin: calc(200px + env(safe-area-inset-top)) auto 100px auto;
   display: block;
 }
 
@@ -967,66 +1000,66 @@
 
 /* 座位0：底部最左 */
 .player-seat.seat-0 {
-  bottom: -200px;
-  left: calc(50% - 270px);
+  bottom: -165px;
+  left: calc(50% - 210px);
 }
 
 .player-seat.seat-0 .player-cards {
   position: absolute;
-  bottom: 200px;
+  bottom: 185px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 /* 座位1：底部左2 */
 .player-seat.seat-1 {
-  bottom: -200px;
-  left: calc(50% - 90px);
+  bottom: -165px;
+  left: calc(50% - 70px);
 }
 
 .player-seat.seat-1 .player-cards {
   position: absolute;
-  bottom: 200px;
+  bottom: 185px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 /* 座位2：底部右2 */
 .player-seat.seat-2 {
-  bottom: -200px;
-  left: calc(50% + 90px);
+  bottom: -165px;
+  left: calc(50% + 70px);
 }
 
 .player-seat.seat-2 .player-cards {
   position: absolute;
-  bottom: 200px;
+  bottom: 185px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 /* 座位3：底部最右 */
 .player-seat.seat-3 {
-  bottom: -200px;
-  left: calc(50% + 270px);
+  bottom: -165px;
+  left: calc(50% + 210px);
 }
 
 .player-seat.seat-3 .player-cards {
   position: absolute;
-  bottom: 200px;
+  bottom: 185px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 /* 座位4：右侧下 */
 .player-seat.seat-4 {
-  right: -140px;
-  top: calc(50% + 80px);
+  right: -115px;
+  top: calc(50% + 60px);
   flex-direction: row;
 }
 
 .player-seat.seat-4 .player-cards {
   position: absolute;
-  right: 140px;
+  right: 135px;
   top: 50%;
   transform: translateY(-50%);
   flex-direction: column;
@@ -1034,14 +1067,14 @@
 
 /* 座位5：右侧上 */
 .player-seat.seat-5 {
-  right: -140px;
-  top: calc(50% - 80px);
+  right: -115px;
+  top: calc(50% - 60px);
   flex-direction: row;
 }
 
 .player-seat.seat-5 .player-cards {
   position: absolute;
-  right: 140px;
+  right: 135px;
   top: 50%;
   transform: translateY(-50%);
   flex-direction: column;
@@ -1049,14 +1082,14 @@
 
 /* 座位6：左侧上 */
 .player-seat.seat-6 {
-  left: -140px;
-  top: calc(50% - 80px);
+  left: -115px;
+  top: calc(50% - 60px);
   flex-direction: row-reverse;
 }
 
 .player-seat.seat-6 .player-cards {
   position: absolute;
-  left: 140px;
+  left: 135px;
   top: 50%;
   transform: translateY(-50%);
   flex-direction: column;
@@ -1064,14 +1097,14 @@
 
 /* 座位7：左侧下 */
 .player-seat.seat-7 {
-  left: -140px;
-  top: calc(50% + 80px);
+  left: -115px;
+  top: calc(50% + 60px);
   flex-direction: row-reverse;
 }
 
 .player-seat.seat-7 .player-cards {
   position: absolute;
-  left: 140px;
+  left: 135px;
   top: 50%;
   transform: translateY(-50%);
   flex-direction: column;
@@ -1090,14 +1123,14 @@
 
 /* 座位0：底部中间 */
 .players-area.centered-layout .player-seat.seat-0 {
-  bottom: -200px;
+  bottom: -165px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .players-area.centered-layout .player-seat.seat-0 .player-cards {
   position: absolute;
-  bottom: 200px;
+  bottom: 185px;
   left: 50%;
   transform: translateX(-50%);
 }
@@ -1105,7 +1138,7 @@
 /* 座位5：顶部中间 */
 .players-area.centered-layout .player-seat.seat-5 {
   right: auto;
-  top: -200px;
+  top: -165px;
   left: 50%;
   transform: translateX(-50%);
   flex-direction: column;
@@ -1114,7 +1147,7 @@
 .players-area.centered-layout .player-seat.seat-5 .player-cards {
   position: absolute;
   right: auto;
-  top: 200px;
+  top: 185px;
   left: 50%;
   transform: translateX(-50%);
   flex-direction: row;
@@ -1122,7 +1155,7 @@
 
 /* 座位6：左侧中间 */
 .players-area.centered-layout .player-seat.seat-6 {
-  left: -130px;
+  left: -115px;
   top: 50%;
   transform: translateY(-50%);
   flex-direction: row-reverse;
@@ -1130,7 +1163,7 @@
 
 .players-area.centered-layout .player-seat.seat-6 .player-cards {
   position: absolute;
-  left: 130px;
+  left: 135px;
   top: 50%;
   transform: translateY(-50%);
   flex-direction: column;
@@ -1139,7 +1172,7 @@
 /* 座位2：右侧中间 */
 .players-area.centered-layout .player-seat.seat-2 {
   bottom: auto;
-  right: -130px;
+  right: -115px;
   left: auto;
   top: 50%;
   transform: translateY(-50%);
@@ -1149,7 +1182,7 @@
 .players-area.centered-layout .player-seat.seat-2 .player-cards {
   position: absolute;
   bottom: auto;
-  right: 130px;
+  right: 135px;
   left: auto;
   top: 50%;
   transform: translateY(-50%);

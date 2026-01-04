@@ -130,6 +130,11 @@
           <div v-if="player.lastBetAmount > 0 && gamePhase === 'betting'" class="bet-chip-anim">
             💰
           </div>
+          
+          <!-- 聊天气泡 -->
+          <div v-if="getPlayerMessage(index)" class="chat-bubble">
+            {{ getPlayerMessage(index) }}
+          </div>
         </template>
       </div>
     </div>
@@ -146,7 +151,7 @@
 <script>
 export default {
   name: 'GameTable',
-  props: ['allSeats', 'currentPlayerIndex', 'pot', 'gamePhase', 'winner', 'gameStatus', 'mySeatIndex', 'isLoading', 'loadingText', 'showdownResult', 'showdownMode', 'showdownPreview'],
+  props: ['allSeats', 'currentPlayerIndex', 'pot', 'gamePhase', 'winner', 'gameStatus', 'mySeatIndex', 'isLoading', 'loadingText', 'showdownResult', 'showdownMode', 'showdownPreview', 'chatMessages'],
   emits: ['card-click', 'player-click'],
   data() {
     return {
@@ -303,6 +308,11 @@ export default {
         'high_card': '散牌'
       }
       return typeMap[handType.type] || handType.type || ''
+    },
+    getPlayerMessage(seatIndex) {
+      if (!this.chatMessages) return null
+      const msg = this.chatMessages.find(m => m.seatIndex === seatIndex)
+      return msg ? msg.message : null
     }
   }
 }
@@ -849,5 +859,203 @@ export default {
 
 :deep(.card-black) {
   color: #1a1a1a !important;
+}
+
+/* 聊天气泡 - 基础样式 */
+.chat-bubble {
+  position: absolute;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+  color: #1e293b;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  animation: chatBubbleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 100;
+}
+
+/* 底部玩家(0,1,2,3) - 气泡显示在上方 */
+.seat-0 .chat-bubble,
+.seat-1 .chat-bubble,
+.seat-2 .chat-bubble,
+.seat-3 .chat-bubble {
+  top: -45px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.seat-0 .chat-bubble::after,
+.seat-1 .chat-bubble::after,
+.seat-2 .chat-bubble::after,
+.seat-3 .chat-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(255, 255, 255, 0.95);
+}
+
+/* 右侧玩家(4,5) - 气泡显示在左边 */
+.seat-4 .chat-bubble,
+.seat-5 .chat-bubble {
+  top: 50%;
+  right: calc(100% + 10px);
+  left: auto;
+  transform: translateY(-50%);
+}
+
+.seat-4 .chat-bubble::after,
+.seat-5 .chat-bubble::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  left: auto;
+  bottom: auto;
+  transform: translateY(-50%);
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 6px solid rgba(255, 255, 255, 0.95);
+}
+
+/* 左侧玩家(6,7) - 气泡显示在右边 */
+.seat-6 .chat-bubble,
+.seat-7 .chat-bubble {
+  top: 50%;
+  left: calc(100% + 10px);
+  right: auto;
+  transform: translateY(-50%);
+}
+
+.seat-6 .chat-bubble::after,
+.seat-7 .chat-bubble::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -6px;
+  right: auto;
+  bottom: auto;
+  transform: translateY(-50%);
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 6px solid rgba(255, 255, 255, 0.95);
+}
+
+/* ===== 居中布局（4人及以下）===== */
+/* 座位5变成顶部 - 气泡显示在下方 */
+.players-area.centered-layout .seat-5 .chat-bubble {
+  top: auto;
+  bottom: -45px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+.players-area.centered-layout .seat-5 .chat-bubble::after {
+  top: -6px;
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: none;
+  border-bottom: 6px solid rgba(255, 255, 255, 0.95);
+}
+
+/* 座位2变成右侧 - 气泡显示在左边 */
+.players-area.centered-layout .seat-2 .chat-bubble {
+  top: 50%;
+  bottom: auto;
+  left: auto;
+  right: calc(100% + 10px);
+  transform: translateY(-50%);
+}
+
+.players-area.centered-layout .seat-2 .chat-bubble::after {
+  top: 50%;
+  bottom: auto;
+  left: auto;
+  right: -6px;
+  transform: translateY(-50%);
+  border-left: 6px solid rgba(255, 255, 255, 0.95);
+  border-right: none;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+}
+
+@keyframes chatBubbleIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+/* 左右玩家气泡动画 */
+.seat-4 .chat-bubble,
+.seat-5 .chat-bubble {
+  animation: chatBubbleInRight 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.seat-6 .chat-bubble,
+.seat-7 .chat-bubble {
+  animation: chatBubbleInLeft 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 居中布局动画覆盖 */
+.players-area.centered-layout .seat-5 .chat-bubble {
+  animation: chatBubbleInBottom 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.players-area.centered-layout .seat-2 .chat-bubble {
+  animation: chatBubbleInRight 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes chatBubbleInRight {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(10px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+}
+
+@keyframes chatBubbleInLeft {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-10px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+}
+
+@keyframes chatBubbleInBottom {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
 }
 </style>

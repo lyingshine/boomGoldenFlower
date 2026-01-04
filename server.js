@@ -2,11 +2,34 @@
  * 诈金花游戏服务器 (权威服务端)
  * 所有游戏逻辑在服务端执行，客户端只负责展示
  */
+import { createServer } from 'http'
 import { WebSocketServer } from 'ws'
+import { readFileSync, existsSync } from 'fs'
+import { join, extname } from 'path'
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
 import { Room } from './server/game/Room.js'
 import { initDatabase, getAllUsers, createUser, updateUser } from './server/db/mysql.js'
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
 const PORT = 3001
+const STATIC_DIR = join(__dirname, 'dist')
+
+// MIME 类型映射
+const MIME_TYPES = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2'
+}
 
 // 房间管理
 const rooms = new Map()
@@ -48,10 +71,54 @@ async function startServer() {
     await initDatabase()
     await loadUsersToCache()
     
-    const wss = new WebSocketServer({ port: PORT })
+    // 创建 HTTP 服务器（同时提供静态文件）
+    const server = createServer((req, res) => {
+      // 处理静态文件请求
+      let filePath = req.url === '/' ? '/index.html' : req.url
+      // 移除查询参数
+      filePath = filePath.split('?')[0]
+      
+      const fullPath = join(STATIC_DIR, filePath)
+      const ext = extname(filePath)
+      
+      // 安全检查：防止目录遍历
+      if (!fullPath.startsWith(STATIC_DIR)) {
+        res.writeHead(403)
+        res.end('Forbidden')
+        return
+      }
+      
+      if (existsSync(fullPath)) {
+        try {
+          const content = readFileSync(fullPath)
+          const contentType = MIME_TYPES[ext] || 'application/octet-stream'
+          res.writeHead(200, { 'Content-Type': contentType })
+          res.end(content)
+        } catch (e) {
+          res.writeHead(500)
+          res.end('Server Error')
+        }
+      } else {
+        // SPA fallback: 返回 index.html
+        try {
+          const content = readFileSync(join(STATIC_DIR, 'index.html'))
+          res.writeHead(200, { 'Content-Type': 'text/html' })
+          res.end(content)
+        } catch (e) {
+          res.writeHead(404)
+          res.end('Not Found')
+        }
+      }
+    })
+    
+    // WebSocket 服务器挂载到 HTTP 服务器
+    const wss = new WebSocketServer({ server })
     setupWebSocket(wss)
     
-    console.log(`🎮 诈金花游戏服务器启动在端口 ${PORT}`)
+    server.listen(PORT, () => {
+      console.log(`🎮 诈金花游戏服务器启动在端口 ${PORT}`)
+      console.log(`📁 静态文件目录: ${STATIC_DIR}`)
+    })
   } catch (error) {
     console.error('❌ 服务器启动失败:', error)
     process.exit(1)

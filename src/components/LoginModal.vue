@@ -90,11 +90,12 @@ export default {
           this.isSuccess = true
           setTimeout(() => this.$emit('login-success', this.userManager), 500)
         } else {
-          this.message = res.message
+          this.message = res.message || '登录失败'
           this.isLoading = false
         }
       } catch (e) {
-        this.message = '网络错误，请重试'
+        console.error('登录异常:', e)
+        this.message = e.message || '网络错误，请重试'
         this.isLoading = false
       }
     },

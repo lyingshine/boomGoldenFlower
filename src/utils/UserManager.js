@@ -23,7 +23,8 @@ export class UserManager {
         console.log('恢复用户会话:', this.currentUser.username)
       }
     } catch (error) {
-      console.error('加载当前用户失败:', error)
+      // Safari 隐私模式下 localStorage 可能不可用
+      console.warn('加载当前用户失败:', error)
     }
   }
 
@@ -34,7 +35,8 @@ export class UserManager {
         localStorage.setItem(this.currentUserKey, JSON.stringify(this.currentUser))
       }
     } catch (error) {
-      console.error('保存当前用户失败:', error)
+      // Safari 隐私模式下 localStorage 可能不可用
+      console.warn('保存当前用户失败:', error)
     }
   }
 

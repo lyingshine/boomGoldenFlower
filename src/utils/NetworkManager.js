@@ -10,10 +10,15 @@ export class NetworkManager {
     this.isHost = false
     this.roomCode = null
     this.seatIndex = -1
-    // 动态获取服务器地址，支持手机访问
-    const host = window.location.hostname || 'localhost'
-    // 统一使用 3001 端口直连 WebSocket 服务器
-    this.serverUrl = `ws://${host}:3001`
+    
+    // 动态获取服务器地址
+    const host = window.location.host || window.location.hostname || 'localhost'
+    const isSecure = window.location.protocol === 'https:'
+    const wsProtocol = isSecure ? 'wss:' : 'ws:'
+    // 通过 /ws 路径连接，匹配 nginx 反向代理配置
+    this.serverUrl = `${wsProtocol}//${host}/ws`
+    
+    console.log('🔧 WebSocket URL:', this.serverUrl)
     
     // 回调函数
     this.onConnected = null
@@ -51,7 +56,12 @@ export class NetworkManager {
         isHost: this.isHost,
         timestamp: Date.now()
       }
-      localStorage.setItem('gameSession', JSON.stringify(session))
+      try {
+        localStorage.setItem('gameSession', JSON.stringify(session))
+      } catch (e) {
+        // Safari 隐私模式下 localStorage 可能不可用
+        console.warn('无法保存会话:', e)
+      }
     }
   }
 
@@ -75,12 +85,17 @@ export class NetworkManager {
 
   // 清除会话
   clearSession() {
-    localStorage.removeItem('gameSession')
+    try {
+      localStorage.removeItem('gameSession')
+    } catch (e) {
+      console.warn('无法清除会话:', e)
+    }
   }
 
   connect() {
     // 如果已经连接且有clientId，直接返回
-    if (this.isConnected && this.clientId && this.ws && this.ws.readyState === WebSocket.OPEN) {
+    // Safari 兼容：使用数字 1 代替 WebSocket.OPEN
+    if (this.isConnected && this.clientId && this.ws && this.ws.readyState === 1) {
       return Promise.resolve()
     }
     
@@ -91,11 +106,9 @@ export class NetworkManager {
     
     this._connectingPromise = new Promise((resolve, reject) => {
       let resolved = false
-      let checkInterval = null
       let timeoutId = null
       
       const cleanup = () => {
-        if (checkInterval) clearInterval(checkInterval)
         if (timeoutId) clearTimeout(timeoutId)
         this._connectingPromise = null
       }
@@ -117,11 +130,19 @@ export class NetworkManager {
       try {
         // 关闭旧连接
         if (this.ws) {
-          this.ws.onclose = null
-          this.ws.onerror = null
-          this.ws.close()
+          try {
+            this.ws.onclose = null
+            this.ws.onerror = null
+            this.ws.onmessage = null
+            this.ws.onopen = null
+            this.ws.close()
+          } catch (e) {
+            // Safari 可能在某些状态下抛出异常
+          }
+          this.ws = null
         }
         
+        console.log('🔌 正在连接:', this.serverUrl)
         this.ws = new WebSocket(this.serverUrl)
         
         this.ws.onopen = () => {
@@ -144,8 +165,8 @@ export class NetworkManager {
           }
         }
         
-        this.ws.onclose = () => {
-          console.log('❌ 与服务器断开连接')
+        this.ws.onclose = (event) => {
+          console.log('❌ 与服务器断开连接', event.code, event.reason)
           this.isConnected = false
           this.clientId = null
           if (this.onDisconnected) this.onDisconnected()
@@ -155,13 +176,16 @@ export class NetworkManager {
         
         this.ws.onerror = (error) => {
           console.error('WebSocket错误:', error)
+          // Safari 有时只触发 onerror 不触发 onclose
+          doReject(new Error('连接错误'))
         }
         
         timeoutId = setTimeout(() => {
           doReject(new Error('连接超时'))
-        }, 5000)
+        }, 8000) // Safari 可能需要更长时间
         
       } catch (error) {
+        console.error('创建WebSocket失败:', error)
         doReject(error)
       }
     })
@@ -330,8 +354,15 @@ export class NetworkManager {
   }
 
   send(message) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message))
+    // Safari 兼容：使用数字 1 代替 WebSocket.OPEN
+    if (this.ws && this.ws.readyState === 1) {
+      try {
+        this.ws.send(JSON.stringify(message))
+      } catch (e) {
+        console.error('发送消息失败:', e)
+      }
+    } else {
+      console.warn('WebSocket 未就绪，消息未发送:', message.type)
     }
   }
 

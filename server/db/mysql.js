@@ -25,6 +25,9 @@ async function initDatabase() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       username VARCHAR(50) UNIQUE NOT NULL,
       password VARCHAR(255) NOT NULL,
+      nickname VARCHAR(50),
+      avatar VARCHAR(20),
+      avatar_url VARCHAR(255),
       chips INT DEFAULT 1000,
       total_games INT DEFAULT 0,
       wins INT DEFAULT 0,
@@ -61,6 +64,18 @@ async function initDatabase() {
   try {
     await pool.execute(createUsersTableSQL)
     await pool.execute(createProfilesTableSQL)
+    
+    // 检查并添加新字段（兼容旧表）
+    try {
+      await pool.execute('ALTER TABLE users ADD COLUMN nickname VARCHAR(50)')
+    } catch (e) { /* 字段已存在 */ }
+    try {
+      await pool.execute('ALTER TABLE users ADD COLUMN avatar VARCHAR(20)')
+    } catch (e) { /* 字段已存在 */ }
+    try {
+      await pool.execute('ALTER TABLE users ADD COLUMN avatar_url VARCHAR(255)')
+    } catch (e) { /* 字段已存在 */ }
+    
     console.log('✅ 数据库表初始化成功')
   } catch (error) {
     console.error('❌ 数据库表初始化失败:', error.message)
@@ -111,7 +126,10 @@ async function updateUser(username, updates) {
     lastLogin: 'last_login',
     lastSignIn: 'last_sign_in',
     signInStreak: 'sign_in_streak',
-    totalSignIns: 'total_sign_ins'
+    totalSignIns: 'total_sign_ins',
+    nickname: 'nickname',
+    avatar: 'avatar',
+    avatarUrl: 'avatar_url'
   }
   
   for (const [key, value] of Object.entries(updates)) {
@@ -135,6 +153,9 @@ function formatUser(row) {
   return {
     username: row.username,
     password: row.password,
+    nickname: row.nickname,
+    avatar: row.avatar,
+    avatarUrl: row.avatar_url,
     chips: row.chips,
     totalGames: row.total_games,
     wins: row.wins,

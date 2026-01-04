@@ -404,7 +404,11 @@ export default {
           formData.append('avatar', this.avatarFile)
           formData.append('username', this.currentUsername)
           
-          const response = await fetch('/api/upload-avatar', {
+          // 生产环境使用 3001 端口，开发环境通过 vite 代理
+          const apiBase = window.location.port === '3000' ? '' : ':3001'
+          const apiUrl = `${window.location.protocol}//${window.location.hostname}${apiBase}/api/upload-avatar`
+          
+          const response = await fetch(apiUrl, {
             method: 'POST',
             body: formData
           })

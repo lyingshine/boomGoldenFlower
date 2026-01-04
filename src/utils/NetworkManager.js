@@ -464,8 +464,30 @@ export class NetworkManager {
     })
   }
 
+  // 确保连接就绪
+  async ensureConnected() {
+    // 如果已连接且有 clientId，直接返回
+    if (this.isConnected && this.clientId && this.ws && this.ws.readyState === 1) {
+      return true
+    }
+    // 否则重新连接
+    await this.connect()
+    // 等待一小段时间确保连接稳定
+    await new Promise(r => setTimeout(r, 100))
+    return this.isConnected && this.clientId
+  }
+
   // 注册
-  register(username, password) {
+  async register(username, password) {
+    try {
+      const connected = await this.ensureConnected()
+      if (!connected) {
+        return { success: false, message: '无法连接服务器' }
+      }
+    } catch (e) {
+      return { success: false, message: '连接失败: ' + e.message }
+    }
+    
     return new Promise((resolve) => {
       this.onRegisterResult = (msg) => {
         this.onRegisterResult = null
@@ -483,7 +505,16 @@ export class NetworkManager {
   }
 
   // 登录
-  login(username, password) {
+  async login(username, password) {
+    try {
+      const connected = await this.ensureConnected()
+      if (!connected) {
+        return { success: false, message: '无法连接服务器' }
+      }
+    } catch (e) {
+      return { success: false, message: '连接失败: ' + e.message }
+    }
+    
     return new Promise((resolve) => {
       this.onLoginResult = (msg) => {
         this.onLoginResult = null

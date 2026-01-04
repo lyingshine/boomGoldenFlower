@@ -13,6 +13,25 @@
     left: 50% !important;
     transform: translateX(-50%) !important;
   }
+  /* 座位0气泡在上方 */
+  .players-area.centered-layout .seat-0 .chat-bubble {
+    top: -40px !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+  }
+  .players-area.centered-layout .seat-0 .chat-bubble::after {
+    top: auto !important;
+    bottom: -6px !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    border-left: 6px solid transparent !important;
+    border-right: 6px solid transparent !important;
+    border-top: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-bottom: none !important;
+  }
   
   /* 座位5：顶部中间 */
   .players-area.centered-layout .player-seat.seat-5 {
@@ -31,6 +50,25 @@
     transform: translateX(-50%) !important;
     flex-direction: row !important;
   }
+  /* 座位5气泡在下方 */
+  .players-area.centered-layout .seat-5 .chat-bubble {
+    top: auto !important;
+    bottom: -40px !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+  }
+  .players-area.centered-layout .seat-5 .chat-bubble::after {
+    top: -6px !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    border-left: 6px solid transparent !important;
+    border-right: 6px solid transparent !important;
+    border-bottom: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-top: none !important;
+  }
   
   /* 座位6：左侧中间 */
   .players-area.centered-layout .player-seat.seat-6 {
@@ -44,6 +82,25 @@
     top: 50% !important;
     transform: translateY(-50%) !important;
     flex-direction: column !important;
+  }
+  /* 座位6气泡在右边 */
+  .players-area.centered-layout .seat-6 .chat-bubble {
+    top: 50% !important;
+    bottom: auto !important;
+    left: calc(100% + 10px) !important;
+    right: auto !important;
+    transform: translateY(-50%) !important;
+  }
+  .players-area.centered-layout .seat-6 .chat-bubble::after {
+    top: 50% !important;
+    bottom: auto !important;
+    left: -6px !important;
+    right: auto !important;
+    transform: translateY(-50%) !important;
+    border-top: 6px solid transparent !important;
+    border-bottom: 6px solid transparent !important;
+    border-right: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-left: none !important;
   }
   
   /* 座位2：右侧中间 */
@@ -62,6 +119,25 @@
     top: 50% !important;
     transform: translateY(-50%) !important;
     flex-direction: column !important;
+  }
+  /* 座位2气泡在左边 */
+  .players-area.centered-layout .seat-2 .chat-bubble {
+    top: 50% !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: calc(100% + 10px) !important;
+    transform: translateY(-50%) !important;
+  }
+  .players-area.centered-layout .seat-2 .chat-bubble::after {
+    top: 50% !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: -6px !important;
+    transform: translateY(-50%) !important;
+    border-top: 6px solid transparent !important;
+    border-bottom: 6px solid transparent !important;
+    border-left: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-right: none !important;
   }
 }
 

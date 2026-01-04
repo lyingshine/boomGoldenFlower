@@ -72,30 +72,48 @@ export default {
       this.isSuccess = false
       this.isLoading = true
       
+      // 总超时 15 秒
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('连接超时，请检查网络后重试')), 15000)
+      )
+      
       try {
-        if (this.isRegister) {
-          const res = await this.userManager.register(this.username, this.password)
-          if (!res.success) { 
-            this.message = res.message
-            this.isLoading = false
-            return 
-          }
-          this.message = '注册成功！'
-          this.isSuccess = true
-        }
-        
-        const res = await this.userManager.login(this.username, this.password)
-        if (res.success) {
-          this.message = '登录成功，正在进入...'
-          this.isSuccess = true
-          setTimeout(() => this.$emit('login-success', this.userManager), 500)
-        } else {
-          this.message = res.message || '登录失败'
-          this.isLoading = false
-        }
+        await Promise.race([this._doSubmit(), timeoutPromise])
       } catch (e) {
         console.error('登录异常:', e)
         this.message = e.message || '网络错误，请重试'
+        this.isLoading = false
+      }
+    },
+    
+    async _doSubmit() {
+      // 先确保网络连接就绪
+      const connected = await this.networkManager.ensureConnected()
+      if (!connected) {
+        this.message = '无法连接服务器，请检查网络'
+        this.isLoading = false
+        return
+      }
+      
+      if (this.isRegister) {
+        const res = await this.userManager.register(this.username, this.password)
+        if (!res.success) { 
+          this.message = res.message
+          this.isLoading = false
+          return 
+        }
+        this.message = '注册成功！'
+        this.isSuccess = true
+      }
+      
+      const loginRes = await this.userManager.login(this.username, this.password)
+      
+      if (loginRes.success) {
+        this.message = '登录成功，正在进入...'
+        this.isSuccess = true
+        setTimeout(() => this.$emit('login-success', this.userManager), 500)
+      } else {
+        this.message = loginRes.message || '登录失败'
         this.isLoading = false
       }
     },

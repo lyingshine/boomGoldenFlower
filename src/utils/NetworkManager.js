@@ -11,12 +11,9 @@ export class NetworkManager {
     this.roomCode = null
     this.seatIndex = -1
     
-    // 动态获取服务器地址
-    const host = window.location.host || window.location.hostname || 'localhost'
-    const isSecure = window.location.protocol === 'https:'
-    const wsProtocol = isSecure ? 'wss:' : 'ws:'
-    // 通过 /ws 路径连接，匹配 nginx 反向代理配置
-    this.serverUrl = `${wsProtocol}//${host}/ws`
+    // 延迟初始化 serverUrl，iOS PWA 模式下 window.location 可能需要时间
+    this.serverUrl = null
+    this._initServerUrl()
     
     console.log('🔧 WebSocket URL:', this.serverUrl)
     
@@ -45,6 +42,33 @@ export class NetworkManager {
     this.reconnectAttempts = 0
     this.maxReconnectAttempts = 5
     this.reconnectDelay = 2000
+  }
+
+  // 初始化服务器 URL（iOS PWA 兼容）
+  _initServerUrl() {
+    try {
+      const loc = window.location
+      let host = loc.host || loc.hostname
+      
+      // iOS PWA 模式下可能获取不到 host
+      if (!host || host === '') {
+        // 尝试从 href 解析
+        const href = loc.href || ''
+        const match = href.match(/^https?:\/\/([^\/]+)/)
+        if (match) {
+          host = match[1]
+        } else {
+          host = 'localhost'
+        }
+      }
+      
+      const isSecure = loc.protocol === 'https:'
+      const wsProtocol = isSecure ? 'wss:' : 'ws:'
+      this.serverUrl = `${wsProtocol}//${host}/ws`
+    } catch (e) {
+      console.error('初始化 serverUrl 失败:', e)
+      this.serverUrl = 'wss://localhost/ws'
+    }
   }
 
   // 保存会话信息到本地
@@ -103,6 +127,11 @@ export class NetworkManager {
     if (this._connectingPromise) {
       return this._connectingPromise
     }
+    
+    // iOS Safari/PWA: 每次连接前重新获取 URL，清理僵尸状态
+    this._initServerUrl()
+    this.isConnected = false
+    console.log('🔌 正在连接:', this.serverUrl)
     
     this._connectingPromise = new Promise((resolve, reject) => {
       let resolved = false
@@ -176,13 +205,14 @@ export class NetworkManager {
         
         this.ws.onerror = (error) => {
           console.error('WebSocket错误:', error)
+          this.isConnected = false
           // Safari 有时只触发 onerror 不触发 onclose
           doReject(new Error('连接错误'))
         }
         
         timeoutId = setTimeout(() => {
           doReject(new Error('连接超时'))
-        }, 8000) // Safari 可能需要更长时间
+        }, 10000) // iOS Safari/PWA 可能需要更长时间
         
       } catch (error) {
         console.error('创建WebSocket失败:', error)
@@ -470,11 +500,22 @@ export class NetworkManager {
     if (this.isConnected && this.clientId && this.ws && this.ws.readyState === 1) {
       return true
     }
-    // 否则重新连接
-    await this.connect()
-    // 等待一小段时间确保连接稳定
-    await new Promise(r => setTimeout(r, 100))
-    return this.isConnected && this.clientId
+    
+    try {
+      await this.connect()
+      
+      // 等待 clientId 设置完成
+      let retries = 0
+      while (!this.clientId && retries < 20) {
+        await new Promise(r => setTimeout(r, 100))
+        retries++
+      }
+      
+      return !!this.clientId
+    } catch (e) {
+      console.error('连接失败:', e.message)
+      return false
+    }
   }
 
   // 注册

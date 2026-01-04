@@ -4,8 +4,14 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   server: {
-    host: '0.0.0.0', // 允许局域网访问
+    host: '0.0.0.0',
     port: 3000,
-    open: true
+    open: true,
+    proxy: {
+      '/ws': {
+        target: 'ws://localhost:3001',
+        ws: true
+      }
+    }
   }
 })

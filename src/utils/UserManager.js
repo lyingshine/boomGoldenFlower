@@ -68,7 +68,6 @@ export class UserManager {
     }
     
     try {
-      await this.networkManager.connect()
       const result = await this.networkManager.login(username, password)
       
       if (result.success && result.user) {

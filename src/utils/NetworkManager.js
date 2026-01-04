@@ -79,12 +79,17 @@ export class NetworkManager {
   }
 
   connect() {
-    // 如果已经连接，直接返回
-    if (this.isConnected && this.ws && this.ws.readyState === WebSocket.OPEN) {
+    // 如果已经连接且有clientId，直接返回
+    if (this.isConnected && this.clientId && this.ws && this.ws.readyState === WebSocket.OPEN) {
       return Promise.resolve()
     }
     
-    return new Promise((resolve, reject) => {
+    // 如果正在连接中，等待连接完成
+    if (this._connectingPromise) {
+      return this._connectingPromise
+    }
+    
+    this._connectingPromise = new Promise((resolve, reject) => {
       let resolved = false
       let checkInterval = null
       let timeoutId = null
@@ -92,6 +97,7 @@ export class NetworkManager {
       const cleanup = () => {
         if (checkInterval) clearInterval(checkInterval)
         if (timeoutId) clearTimeout(timeoutId)
+        this._connectingPromise = null
       }
       
       const doResolve = () => {
@@ -109,6 +115,13 @@ export class NetworkManager {
       }
       
       try {
+        // 关闭旧连接
+        if (this.ws) {
+          this.ws.onclose = null
+          this.ws.onerror = null
+          this.ws.close()
+        }
+        
         this.ws = new WebSocket(this.serverUrl)
         
         this.ws.onopen = () => {
@@ -122,6 +135,10 @@ export class NetworkManager {
           try {
             const message = JSON.parse(event.data)
             this.handleMessage(message)
+            // 收到 clientId 后才算连接完成
+            if (message.type === 'connected' && message.clientId) {
+              doResolve()
+            }
           } catch (error) {
             console.error('消息解析错误:', error)
           }
@@ -130,36 +147,26 @@ export class NetworkManager {
         this.ws.onclose = () => {
           console.log('❌ 与服务器断开连接')
           this.isConnected = false
+          this.clientId = null
           if (this.onDisconnected) this.onDisconnected()
-          
-          // 连接过程中关闭，视为失败
           doReject(new Error('连接关闭'))
-          
-          // 尝试自动重连
           this.tryReconnect()
         }
         
         this.ws.onerror = (error) => {
           console.error('WebSocket错误:', error)
-          // Safari 中 onerror 后会触发 onclose，这里不直接 reject
         }
         
-        checkInterval = setInterval(() => {
-          if (this.isConnected && this.clientId) {
-            doResolve()
-          }
-        }, 100)
-        
         timeoutId = setTimeout(() => {
-          if (!this.isConnected) {
-            doReject(new Error('连接超时'))
-          }
+          doReject(new Error('连接超时'))
         }, 5000)
         
       } catch (error) {
         doReject(error)
       }
     })
+    
+    return this._connectingPromise
   }
 
   // 尝试自动重连

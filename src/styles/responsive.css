@@ -518,6 +518,95 @@
     flex-direction: column;
   }
   
+  /* 移动端聊天气泡位置调整 */
+  /* 底部玩家(0,1) - 气泡显示在上方 */
+  .seat-0 .chat-bubble,
+  .seat-1 .chat-bubble {
+    top: -40px !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translateX(-50%) !important;
+  }
+  .seat-0 .chat-bubble::after,
+  .seat-1 .chat-bubble::after {
+    top: auto !important;
+    bottom: -6px !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    border-left: 6px solid transparent !important;
+    border-right: 6px solid transparent !important;
+    border-top: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-bottom: none !important;
+  }
+  
+  /* 顶部玩家(4,5) - 气泡显示在下方 */
+  .seat-4 .chat-bubble,
+  .seat-5 .chat-bubble {
+    top: auto !important;
+    bottom: -40px !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+  }
+  .seat-4 .chat-bubble::after,
+  .seat-5 .chat-bubble::after {
+    top: -6px !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    border-left: 6px solid transparent !important;
+    border-right: 6px solid transparent !important;
+    border-bottom: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-top: none !important;
+  }
+  
+  /* 右侧玩家(2,3) - 气泡显示在左边 */
+  .seat-2 .chat-bubble,
+  .seat-3 .chat-bubble {
+    top: 50% !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: calc(100% + 10px) !important;
+    transform: translateY(-50%) !important;
+  }
+  .seat-2 .chat-bubble::after,
+  .seat-3 .chat-bubble::after {
+    top: 50% !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: -6px !important;
+    transform: translateY(-50%) !important;
+    border-top: 6px solid transparent !important;
+    border-bottom: 6px solid transparent !important;
+    border-left: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-right: none !important;
+  }
+  
+  /* 左侧玩家(6,7) - 气泡显示在右边 */
+  .seat-6 .chat-bubble,
+  .seat-7 .chat-bubble {
+    top: 50% !important;
+    bottom: auto !important;
+    left: calc(100% + 10px) !important;
+    right: auto !important;
+    transform: translateY(-50%) !important;
+  }
+  .seat-6 .chat-bubble::after,
+  .seat-7 .chat-bubble::after {
+    top: 50% !important;
+    bottom: auto !important;
+    left: -6px !important;
+    right: auto !important;
+    transform: translateY(-50%) !important;
+    border-top: 6px solid transparent !important;
+    border-bottom: 6px solid transparent !important;
+    border-right: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-left: none !important;
+  }
+  
   /* 空座位样式 */
   .empty-seat {
     opacity: 0.25;

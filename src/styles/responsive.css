@@ -9,7 +9,7 @@
     transform: translateX(-50%) !important;
   }
   .players-area.centered-layout .player-seat.seat-0 .player-cards {
-    bottom: 85px !important;
+    bottom: 130px !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
   }
@@ -24,7 +24,7 @@
     flex-direction: column !important;
   }
   .players-area.centered-layout .player-seat.seat-5 .player-cards {
-    top: 85px !important;
+    top: 130px !important;
     bottom: auto !important;
     left: 50% !important;
     right: auto !important;
@@ -40,7 +40,7 @@
     flex-direction: row-reverse !important;
   }
   .players-area.centered-layout .player-seat.seat-6 .player-cards {
-    left: 85px !important;
+    left: 100px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
     flex-direction: column !important;
@@ -56,7 +56,7 @@
     flex-direction: row !important;
   }
   .players-area.centered-layout .player-seat.seat-2 .player-cards {
-    right: 85px !important;
+    right: 100px !important;
     left: auto !important;
     bottom: auto !important;
     top: 50% !important;
@@ -396,14 +396,14 @@
   }
   
   /* 移动端座位位置 - 8人布局 */
-  /* 底部2个玩家 - 卡片在牌桌下方，牌在玩家上方 */
+  /* 底部2个玩家 - 牌在牌桌内 */
   .player-seat.seat-0 {
     bottom: -110px;
     left: calc(50% - 100px);
   }
   .player-seat.seat-0 .player-cards {
     position: absolute;
-    bottom: 85px;
+    bottom: 130px;
     left: 50%;
     transform: translateX(-50%);
   }
@@ -414,12 +414,12 @@
   }
   .player-seat.seat-1 .player-cards {
     position: absolute;
-    bottom: 85px;
+    bottom: 130px;
     left: 50%;
     transform: translateX(-50%);
   }
   
-  /* 右侧2个玩家 - 卡片在牌桌右侧，牌在玩家左侧 */
+  /* 右侧2个玩家 - 牌在牌桌内 */
   .player-seat.seat-2 {
     bottom: auto;
     left: auto;
@@ -430,7 +430,7 @@
   .player-seat.seat-2 .player-cards {
     position: absolute;
     bottom: auto;
-    right: 85px;
+    right: 100px;
     left: auto;
     top: 50%;
     transform: translateY(-50%);
@@ -447,14 +447,14 @@
   .player-seat.seat-3 .player-cards {
     position: absolute;
     bottom: auto;
-    right: 85px;
+    right: 100px;
     left: auto;
     top: 50%;
     transform: translateY(-50%);
     flex-direction: column;
   }
   
-  /* 顶部2个玩家 - 卡片在牌桌上方，牌在玩家下方 */
+  /* 顶部2个玩家 - 牌在牌桌内 */
   .player-seat.seat-4 {
     display: flex;
     top: -110px;
@@ -465,7 +465,7 @@
   }
   .player-seat.seat-4 .player-cards {
     position: absolute;
-    top: 85px;
+    top: 130px;
     bottom: auto;
     left: 50%;
     right: auto;
@@ -483,7 +483,7 @@
   }
   .player-seat.seat-5 .player-cards {
     position: absolute;
-    top: 85px;
+    top: 130px;
     bottom: auto;
     left: 50%;
     right: auto;
@@ -491,7 +491,7 @@
     flex-direction: row;
   }
   
-  /* 左侧2个玩家 - 卡片在牌桌左侧，牌在玩家右侧 */
+  /* 左侧2个玩家 - 牌在牌桌内 */
   .player-seat.seat-6 {
     left: -80px;
     top: calc(50% - 90px);
@@ -499,7 +499,7 @@
   }
   .player-seat.seat-6 .player-cards {
     position: absolute;
-    left: 85px;
+    left: 100px;
     top: 50%;
     transform: translateY(-50%);
     flex-direction: column;
@@ -512,7 +512,7 @@
   }
   .player-seat.seat-7 .player-cards {
     position: absolute;
-    left: 85px;
+    left: 100px;
     top: 50%;
     transform: translateY(-50%);
     flex-direction: column;
@@ -906,29 +906,29 @@
     font-size: 20px !important;
   }
   
-  /* 上下玩家离桌远一点，牌紧贴玩家 */
+  /* 上下玩家离桌远一点，牌在牌桌内 */
   .player-seat.seat-0 { bottom: -130px !important; }
-  .player-seat.seat-0 .player-cards { bottom: 95px !important; }
+  .player-seat.seat-0 .player-cards { bottom: 150px !important; }
   .player-seat.seat-1 { bottom: -130px !important; }
-  .player-seat.seat-1 .player-cards { bottom: 95px !important; }
+  .player-seat.seat-1 .player-cards { bottom: 150px !important; }
   .player-seat.seat-4 { top: -130px !important; }
-  .player-seat.seat-4 .player-cards { top: 95px !important; }
+  .player-seat.seat-4 .player-cards { top: 150px !important; }
   .player-seat.seat-5 { top: -130px !important; }
-  .player-seat.seat-5 .player-cards { top: 95px !important; }
+  .player-seat.seat-5 .player-cards { top: 150px !important; }
   
-  /* 左右玩家牌紧贴玩家 */
-  .player-seat.seat-2 .player-cards { right: 90px !important; }
-  .player-seat.seat-3 .player-cards { right: 90px !important; }
-  .player-seat.seat-6 .player-cards { left: 90px !important; }
-  .player-seat.seat-7 .player-cards { left: 90px !important; }
+  /* 左右玩家牌在牌桌内 */
+  .player-seat.seat-2 .player-cards { right: 100px !important; }
+  .player-seat.seat-3 .player-cards { right: 100px !important; }
+  .player-seat.seat-6 .player-cards { left: 100px !important; }
+  .player-seat.seat-7 .player-cards { left: 100px !important; }
   
   /* 居中布局时 */
   .players-area.centered-layout .player-seat.seat-0 { bottom: -130px !important; }
-  .players-area.centered-layout .player-seat.seat-0 .player-cards { bottom: 95px !important; }
+  .players-area.centered-layout .player-seat.seat-0 .player-cards { bottom: 150px !important; }
   .players-area.centered-layout .player-seat.seat-5 { top: -130px !important; }
-  .players-area.centered-layout .player-seat.seat-5 .player-cards { top: 95px !important; }
-  .players-area.centered-layout .player-seat.seat-2 .player-cards { right: 90px !important; }
-  .players-area.centered-layout .player-seat.seat-6 .player-cards { left: 90px !important; }
+  .players-area.centered-layout .player-seat.seat-5 .player-cards { top: 150px !important; }
+  .players-area.centered-layout .player-seat.seat-2 .player-cards { right: 100px !important; }
+  .players-area.centered-layout .player-seat.seat-6 .player-cards { left: 100px !important; }
 }
 
 /* 小屏手机 */

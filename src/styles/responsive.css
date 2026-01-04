@@ -14,14 +14,14 @@
     transform: translateX(-50%) !important;
   }
   /* 座位0气泡在左侧 */
-  .players-area.centered-layout .seat-0 .chat-bubble {
+  .players-area.centered-layout .player-seat.seat-0 .chat-bubble {
     top: 50% !important;
     bottom: auto !important;
     left: auto !important;
     right: calc(100% + 10px) !important;
     transform: translateY(-50%) !important;
   }
-  .players-area.centered-layout .seat-0 .chat-bubble::after {
+  .players-area.centered-layout .player-seat.seat-0 .chat-bubble::after {
     top: 50% !important;
     bottom: auto !important;
     left: auto !important;
@@ -51,14 +51,14 @@
     flex-direction: row !important;
   }
   /* 座位5气泡在右侧 */
-  .players-area.centered-layout .seat-5 .chat-bubble {
+  .players-area.centered-layout .player-seat.seat-5 .chat-bubble {
     top: 50% !important;
     bottom: auto !important;
     left: calc(100% + 10px) !important;
     right: auto !important;
     transform: translateY(-50%) !important;
   }
-  .players-area.centered-layout .seat-5 .chat-bubble::after {
+  .players-area.centered-layout .player-seat.seat-5 .chat-bubble::after {
     top: 50% !important;
     bottom: auto !important;
     left: -6px !important;
@@ -84,14 +84,14 @@
     flex-direction: column !important;
   }
   /* 座位6气泡在上方 */
-  .players-area.centered-layout .seat-6 .chat-bubble {
+  .players-area.centered-layout .player-seat.seat-6 .chat-bubble {
     top: auto !important;
     bottom: calc(100% + 10px) !important;
     left: 50% !important;
     right: auto !important;
     transform: translateX(-50%) !important;
   }
-  .players-area.centered-layout .seat-6 .chat-bubble::after {
+  .players-area.centered-layout .player-seat.seat-6 .chat-bubble::after {
     top: auto !important;
     bottom: -6px !important;
     left: 50% !important;
@@ -121,14 +121,14 @@
     flex-direction: column !important;
   }
   /* 座位2气泡在上方 */
-  .players-area.centered-layout .seat-2 .chat-bubble {
+  .players-area.centered-layout .player-seat.seat-2 .chat-bubble {
     top: auto !important;
     bottom: calc(100% + 10px) !important;
     left: 50% !important;
     right: auto !important;
     transform: translateX(-50%) !important;
   }
-  .players-area.centered-layout .seat-2 .chat-bubble::after {
+  .players-area.centered-layout .player-seat.seat-2 .chat-bubble::after {
     top: auto !important;
     bottom: -6px !important;
     left: 50% !important;

@@ -6,8 +6,9 @@ import { GameState } from './GameState.js'
  * 游戏引擎 (服务端权威)
  */
 export class GameEngine {
-  constructor(roomCode) {
+  constructor(roomCode, room = null) {
     this.roomCode = roomCode
+    this.room = room  // 引用 Room 以访问跨局玩家档案
     this.seats = new Array(8).fill(null)
     this.deck = null
     this.state = new GameState()
@@ -514,240 +515,327 @@ export class GameEngine {
     })
   }
 
-  makeAIDecision(seatIndex) {
+  async makeAIDecision(seatIndex) {
     const player = this.seats[seatIndex]
     if (!player || player.type !== 'ai') return null
 
     const activePlayers = this.getActivePlayers().filter(p => p.id !== seatIndex)
     const callAmount = this.getCallAmountForPlayer(player)
-    const potOdds = callAmount / (this.state.pot + callAmount)
     const round = this.state.round || 1
     
-    // 分析对手行为
-    const blindOpponents = activePlayers.filter(p => !p.hasPeeked)
-    const peekedOpponents = activePlayers.filter(p => p.hasPeeked)
-    const totalOpponents = activePlayers.length
-    
-    // 深度分析每个对手
-    const opponentAnalysis = activePlayers.map(p => ({
+    // ========== 获取对手档案（跨局数据，异步）==========
+    const opponentProfiles = await Promise.all(activePlayers.map(async p => ({
       player: p,
-      behavior: this.analyzeOpponentBehavior(p),
-      tendency: this.getOpponentTendency(p.id)
-    }))
+      profile: this.room ? await this.room.getPlayerProfile(p.name) : null,
+      currentBehavior: this.analyzeOpponentBehavior(p),
+      estimatedStrength: this.estimateOpponentStrength(p)
+    })))
     
-    // 统计对手类型
-    const aggressiveCount = opponentAnalysis.filter(a => a.behavior.aggressive).length
-    const likelyBluffingCount = opponentAnalysis.filter(a => a.behavior.likelyBluffing).length
-    const likelyStrongCount = opponentAnalysis.filter(a => a.behavior.likelyStrong).length
-    
-    // 筹码压力分析
-    const chipPressure = callAmount / player.chips
-    
-    // 底池价值分析
-    const potValue = this.state.pot
-    const potToChipRatio = potValue / player.chips
-
     // ========== 筹码不足时的决策 ==========
     if (player.chips < callAmount) {
-      // 焖牌状态：不知道牌力，根据底池赔率和随机决定
+      // 筹码不足，必须先看牌再决定是否全押
       if (!player.hasPeeked) {
-        // 底池大时更愿意搏一把
-        if (potToChipRatio > 0.5 && Math.random() > 0.4) return { action: 'call' }
-        if (Math.random() > 0.6) return { action: 'call' }
-        return { action: 'fold' }
+        console.log(`🔍 AI ${player.name} 筹码不足，强制看牌`)
+        return { action: 'peek' }
       }
-      // 已看牌：根据真实牌力决定
+      // 已看牌，根据牌力决定是否全押
       const handType = player.hand.getType()
       const strength = handType.weight
-      if (strength >= 7000) return { action: 'call' }
-      if (strength >= 5000 && Math.random() > 0.4) return { action: 'call' }
-      if (Math.random() > 0.7) return { action: 'call' }
+      // 对子以上（weight >= 3000）都全押
+      if (strength >= 3000) return { action: 'call' }
+      // 高牌也有一定概率全押
+      if (Math.random() > 0.4) return { action: 'call' }
+      console.log(`🔍 AI ${player.name} 筹码不足+弱牌，弃牌`)
       return { action: 'fold' }
     }
 
-    // ========== 焖牌状态的决策（不能看牌力！）==========
+    // ========== 焖牌状态的决策（绝不弃牌）==========
     if (!player.hasPeeked) {
-      return this.makeBlindDecision(player, callAmount, {
+      const decision = this.makeBlindDecision(player, callAmount, {
         round,
-        totalOpponents,
-        blindOpponents,
-        peekedOpponents,
-        aggressiveCount,
-        likelyStrongCount,
-        likelyBluffingCount,
-        chipPressure,
-        potToChipRatio,
-        potOdds
+        opponentProfiles,
+        activePlayers
       })
+      // 安全检查：焖牌状态绝不能弃牌
+      if (decision.action === 'fold') {
+        console.log(`⚠️ AI ${player.name} 焖牌状态试图弃牌，强制改为看牌`)
+        return { action: 'peek' }
+      }
+      return decision
     }
 
-    // ========== 已看牌后的决策（可以使用真实牌力）==========
+    // ========== 已看牌后的决策 ==========
     const handType = player.hand.getType()
     const strength = handType.weight
+    const playerCount = activePlayers.length + 1
+    const { isMonster, isStrong, isMedium, isWeak } = this.evaluateHandStrength(strength, playerCount)
     
-    // 根据玩家数动态调整牌力评估
-    const { isMonster, isStrong, isMedium, isWeak } = this.evaluateHandStrength(strength, totalOpponents + 1)
+    // 计算对手平均推测强度
+    const avgOppStrength = this.getAverageOpponentStrength(opponentProfiles)
     
-    // 开牌决策
+    // ========== 开牌决策 ==========
     if (activePlayers.length >= 1) {
-      if (isMonster && Math.random() > 0.7) {
-        const target = this.findBestShowdownTarget(activePlayers)
-        if (target) return { action: 'showdown', amount: target.id }
-      }
-      if (isStrong && totalOpponents === 1 && Math.random() > 0.8) {
-        return { action: 'showdown', amount: activePlayers[0].id }
-      }
-      if (isMedium && totalOpponents === 1 && Math.random() > 0.9) {
-        return { action: 'showdown', amount: activePlayers[0].id }
-      }
+      const showdownDecision = this.considerShowdown(player, strength, opponentProfiles, activePlayers)
+      if (showdownDecision) return showdownDecision
     }
 
-    // 下注决策
-    if (isMonster) {
-      const raiseAmount = Math.min(20 + Math.floor(Math.random() * 20), player.chips - callAmount)
-      if (raiseAmount > 0 && Math.random() > 0.2) {
-        return { action: 'raise', amount: raiseAmount }
-      }
+    // ========== 混合策略下注决策 ==========
+    const decision = this.makeBettingDecision(player, callAmount, {
+      strength, isMonster, isStrong, isMedium, isWeak,
+      avgOppStrength, opponentProfiles, round
+    })
+    
+    // 安全检查：强牌不能弃牌
+    if (decision.action === 'fold' && (isMonster || isStrong)) {
+      console.log(`⚠️ AI ${player.name} 强牌试图弃牌，强制改为跟注`)
       return { action: 'call' }
     }
     
-    if (isStrong) {
-      if (Math.random() > 0.3) {
-        const raiseAmount = Math.min(15 + Math.floor(Math.random() * 15), player.chips - callAmount)
-        if (raiseAmount > 0) return { action: 'raise', amount: raiseAmount }
-      }
-      return { action: 'call' }
-    }
-    
-    if (isMedium) {
-      if (chipPressure > 0.25 && Math.random() > 0.6) return { action: 'fold' }
-      if (Math.random() > 0.8) return { action: 'raise', amount: 10 }
-      return { action: 'call' }
-    }
-    
-    // 弱牌
-    if (aggressiveCount > 0 || chipPressure > 0.15) {
-      if (Math.random() > 0.2) return { action: 'fold' }
-    }
-    if (potOdds > 0.35) return { action: 'fold' }
-    if (Math.random() > 0.7) return { action: 'call' }
-    return { action: 'fold' }
+    return decision
   }
 
-  // 焖牌状态的决策（完全不看牌力）
+  // 焖牌状态的决策
   makeBlindDecision(player, callAmount, context) {
-    const {
-      round,
-      totalOpponents,
-      blindOpponents,
-      peekedOpponents,
-      aggressiveCount,
-      likelyStrongCount,
-      likelyBluffingCount,
-      chipPressure,
-      potToChipRatio,
-      potOdds
-    } = context
-
-    // 基础继续概率（随机性是焖牌的核心）
-    let continueChance = 0.7  // 70%基础继续率
+    const { round, opponentProfiles, activePlayers } = context
     
-    // 根据对手行为调整
-    if (aggressiveCount >= 2) continueChance -= 0.2  // 多个激进对手，降低继续率
-    if (likelyStrongCount > 0) continueChance -= 0.15  // 有人看起来很强
-    if (likelyBluffingCount > 0) continueChance += 0.1  // 有人可能在诈
+    // 分析对手
+    const aggressiveCount = opponentProfiles.filter(o => o.currentBehavior.aggressive).length
+    const avgOppStrength = this.getAverageOpponentStrength(opponentProfiles)
+    const chipPressure = callAmount / player.chips
     
-    // 根据筹码压力调整
-    if (chipPressure > 0.3) continueChance -= 0.2
-    if (chipPressure > 0.5) continueChance -= 0.2
+    // 根据对手档案判断是否有人在诈唬
+    const likelyBluffers = opponentProfiles.filter(o => {
+      if (!o.profile) return false
+      const bluffRate = o.profile.bluffCaught / Math.max(o.profile.totalHands, 1)
+      return bluffRate > 0.15 || (o.profile.raiseCount / Math.max(o.profile.totalHands, 1) > 0.5)
+    })
     
-    // 底池大时更愿意继续
-    if (potToChipRatio > 0.3) continueChance += 0.1
+    // ========== 决定是否看牌 ==========
+    let peekChance = 0.3
+    if (round >= 2) peekChance += 0.15
+    if (round >= 4) peekChance += 0.25
+    if (aggressiveCount > 0) peekChance += 0.2
+    if (chipPressure > 0.25) peekChance += 0.2
+    if (avgOppStrength > 0.6) peekChance += 0.15  // 对手看起来强，先看牌
     
-    // 回合数影响：后期更谨慎
-    if (round > 3) continueChance -= 0.1
-    
-    // 确保概率在合理范围
-    continueChance = Math.max(0.2, Math.min(0.85, continueChance))
-
-    // 决定是否继续
-    if (Math.random() > continueChance) {
-      return { action: 'fold' }
+    // 关键修复：如果压力大或对手强，必须先看牌再决定，不能盲弃
+    if (chipPressure > 0.3 || avgOppStrength > 0.6 || aggressiveCount >= 2) {
+      peekChance = Math.max(peekChance, 0.85)  // 强制高概率看牌
     }
-
-    // 决定是否看牌
-    let peekChance = 0.25  // 25%基础看牌率
-    if (round >= 3) peekChance += 0.15  // 后期更想看牌
-    if (peekedOpponents.length > blindOpponents.length) peekChance += 0.2  // 多数人看了
-    if (aggressiveCount > 0) peekChance += 0.15  // 对手激进时想看牌应对
-    if (chipPressure > 0.25) peekChance += 0.1  // 压力大时想看牌
     
+    peekChance = Math.min(0.95, peekChance)
     if (Math.random() < peekChance) {
       return { action: 'peek' }
     }
 
-    // 继续焖牌
-    // 决定是否加注（虚张声势）
-    let raiseChance = 0.2  // 20%基础加注率
-    if (blindOpponents.length > peekedOpponents.length) raiseChance += 0.1  // 大家都焖，可以诈
-    if (potToChipRatio > 0.3) raiseChance += 0.1  // 底池大，值得诈
-    if (likelyBluffingCount > 0) raiseChance -= 0.1  // 别人也在诈，收敛点
-    
-    const shouldRaise = Math.random() < raiseChance && player.chips > callAmount + 10
-    return this.makeBlindBet(player, callAmount, shouldRaise)
-  }
-
-  // 焖牌下注
-  makeBlindBet(player, callAmount, shouldRaise) {
-    if (shouldRaise && player.chips > callAmount + 10) {
-      // 焖牌加注
-      const raiseAmount = 10 + Math.floor(Math.random() * 20)
-      return { action: 'blind', amount: Math.min(callAmount + raiseAmount, player.chips) }
+    // ========== 不看牌继续焖 ==========
+    // 既然选择不看牌，就不应该弃牌（焖牌的意义就是继续）
+    // 只有筹码压力极大时才考虑弃牌
+    if (chipPressure > 0.5 && Math.random() > 0.7) {
+      // 压力太大，先看牌
+      return { action: 'peek' }
     }
+
+    // ========== 焖牌下注（含诈唬）==========
+    let bluffChance = 0.2
+    if (likelyBluffers.length === 0 && avgOppStrength < 0.5) bluffChance += 0.15
+    
+    if (Math.random() < bluffChance && player.chips > callAmount + 15) {
+      const raiseAmount = 10 + Math.floor(Math.random() * 25)
+      return { action: 'blind', amount: callAmount + raiseAmount }
+    }
+    
     return { action: 'blind', amount: callAmount }
   }
 
-  // 估算胜率
-  estimateWinProbability(strength, opponentCount) {
-    // 简化的胜率估算
-    const baseWinRate = strength / 10000
-    // 对手越多，胜率越低
-    const adjustedRate = Math.pow(baseWinRate, 1 + opponentCount * 0.15)
-    return adjustedRate
+  // 混合策略下注决策
+  makeBettingDecision(player, callAmount, context) {
+    const { strength, isMonster, isStrong, isMedium, isWeak, avgOppStrength, opponentProfiles, round } = context
+    const chipPressure = callAmount / player.chips
+    
+    // 怪兽牌：混合加注和慢打
+    if (isMonster) {
+      const roll = Math.random()
+      if (roll < 0.65) {
+        // 65% 加注
+        const raiseAmount = Math.min(20 + Math.floor(Math.random() * 30), player.chips - callAmount)
+        if (raiseAmount > 0) return { action: 'raise', amount: raiseAmount }
+      } else if (roll < 0.9) {
+        // 25% 跟注（慢打）
+        return { action: 'call' }
+      } else {
+        // 10% 小加注（迷惑）
+        return { action: 'raise', amount: Math.min(10, player.chips - callAmount) }
+      }
+      return { action: 'call' }
+    }
+    
+    // 强牌：根据对手强度调整
+    if (isStrong) {
+      if (avgOppStrength < 0.4) {
+        // 对手弱，价值加注
+        if (Math.random() > 0.3) {
+          const raiseAmount = Math.min(15 + Math.floor(Math.random() * 20), player.chips - callAmount)
+          if (raiseAmount > 0) return { action: 'raise', amount: raiseAmount }
+        }
+      } else {
+        // 对手强，谨慎跟注
+        if (Math.random() > 0.7) {
+          return { action: 'raise', amount: Math.min(15, player.chips - callAmount) }
+        }
+      }
+      return { action: 'call' }
+    }
+    
+    // 中等牌：更谨慎，不轻易弃牌
+    if (isMedium) {
+      // 只有压力很大且对手很强时才考虑弃牌
+      if (chipPressure > 0.4 && avgOppStrength > 0.65) {
+        if (Math.random() > 0.65) return { action: 'fold' }
+      }
+      // 偶尔诈唬
+      if (Math.random() < 0.15 && player.chips > callAmount + 15) {
+        return { action: 'raise', amount: 15 }
+      }
+      return { action: 'call' }
+    }
+    
+    // 弱牌：考虑诈唬或弃牌
+    if (avgOppStrength > 0.6 || chipPressure > 0.25) {
+      // 对手强或压力大，大概率弃牌
+      if (Math.random() > 0.3) return { action: 'fold' }
+    }
+    
+    // 弱牌诈唬（低频率）
+    if (Math.random() < 0.12 && player.chips > callAmount + 20) {
+      return { action: 'raise', amount: 20 + Math.floor(Math.random() * 15) }
+    }
+    
+    // 底池赔率够好就跟
+    const potOdds = callAmount / (this.state.pot + callAmount)
+    if (potOdds < 0.25 && Math.random() > 0.4) {
+      return { action: 'call' }
+    }
+    
+    return { action: 'fold' }
+  }
+
+  // 开牌决策
+  considerShowdown(player, strength, opponentProfiles, activePlayers) {
+    if (activePlayers.length === 0) return null
+    
+    // 找最佳开牌目标
+    const target = this.findBestShowdownTarget(opponentProfiles)
+    if (!target) return null
+    
+    const showdownCost = this.getLastActiveBetAmount(player.id)
+    if (player.chips < showdownCost) return null
+    
+    // 计算开牌期望值
+    const ev = this.calculateShowdownEV(strength, target, this.state.pot, showdownCost)
+    
+    // EV > 0 且有一定概率才开
+    if (ev > 0) {
+      const showdownChance = Math.min(0.8, 0.3 + ev / 100)
+      if (Math.random() < showdownChance) {
+        return { action: 'showdown', amount: target.player.id }
+      }
+    }
+    
+    return null
+  }
+
+  // 贝叶斯推测对手牌力
+  estimateOpponentStrength(opponent) {
+    // 基础分布
+    let distribution = { weak: 0.33, medium: 0.33, strong: 0.34 }
+    
+    // 根据当前行为调整
+    if (opponent.hasPeeked) {
+      if (opponent.lastBetAmount > 35) {
+        // 看牌后大额加注 → 很可能强牌
+        distribution = { weak: 0.1, medium: 0.25, strong: 0.65 }
+      } else if (opponent.lastBetAmount > 20) {
+        distribution = { weak: 0.2, medium: 0.35, strong: 0.45 }
+      } else if (opponent.lastBetAmount <= 10) {
+        // 看牌后小额跟注 → 可能中等或弱
+        distribution = { weak: 0.35, medium: 0.4, strong: 0.25 }
+      }
+    } else {
+      // 焖牌状态
+      if (opponent.lastBetAmount > 30) {
+        // 焖牌大注 → 可能诈唬，也可能有信心
+        distribution = { weak: 0.35, medium: 0.3, strong: 0.35 }
+      } else {
+        distribution = { weak: 0.35, medium: 0.35, strong: 0.3 }
+      }
+    }
+    
+    // 结合历史档案调整
+    const profile = this.room?.getPlayerProfile(opponent.name)
+    if (profile && profile.totalHands > 5) {
+      const bluffRate = profile.bluffCaught / profile.totalHands
+      const raiseRate = profile.raiseCount / profile.totalHands
+      
+      // 经常诈唬的玩家，强牌概率下调
+      if (bluffRate > 0.2) {
+        distribution.strong *= 0.7
+        distribution.weak += distribution.strong * 0.3
+      }
+      
+      // 很少加注的玩家加注了，更可能是强牌
+      if (raiseRate < 0.2 && opponent.lastBetAmount > 20) {
+        distribution.strong *= 1.3
+        distribution.weak *= 0.7
+      }
+    }
+    
+    // 归一化
+    const total = distribution.weak + distribution.medium + distribution.strong
+    distribution.weak /= total
+    distribution.medium /= total
+    distribution.strong /= total
+    
+    // 返回加权强度值 (0-1)
+    return distribution.medium * 0.5 + distribution.strong * 1.0
+  }
+
+  // 计算平均对手强度
+  getAverageOpponentStrength(opponentProfiles) {
+    if (opponentProfiles.length === 0) return 0.5
+    const sum = opponentProfiles.reduce((acc, o) => acc + o.estimatedStrength, 0)
+    return sum / opponentProfiles.length
+  }
+
+  // 计算开牌期望值
+  calculateShowdownEV(myStrength, targetProfile, pot, cost) {
+    const oppStrength = targetProfile.estimatedStrength
+    
+    // 简化胜率计算
+    let winProb
+    if (myStrength >= 8000) winProb = 0.85 - oppStrength * 0.3
+    else if (myStrength >= 6000) winProb = 0.7 - oppStrength * 0.35
+    else if (myStrength >= 4000) winProb = 0.55 - oppStrength * 0.3
+    else winProb = 0.35 - oppStrength * 0.2
+    
+    winProb = Math.max(0.1, Math.min(0.9, winProb))
+    
+    // EV = 胜率 * 底池 - 败率 * 开牌费用
+    return winProb * pot - (1 - winProb) * cost
   }
 
   // 找最佳开牌目标
-  findBestShowdownTarget(opponents) {
-    if (!opponents || opponents.length === 0) return null
+  findBestShowdownTarget(opponentProfiles) {
+    if (!opponentProfiles || opponentProfiles.length === 0) return null
     
-    // 评分系统：综合考虑多个因素
-    const scored = opponents.map(p => {
-      let score = 0
-      
-      // 焖牌的对手更可能在虚张声势（+30分）
-      if (!p.hasPeeked) score += 30
-      
-      // 下注激进但焖牌的可能在诈（+20分）
-      if (!p.hasPeeked && p.lastBetAmount > 20) score += 20
-      
-      // 下注保守的看牌玩家可能牌不强（+15分）
-      if (p.hasPeeked && p.lastBetAmount <= 15) score += 15
-      
-      // 筹码少的对手更容易是在搏命（+10分）
-      if (p.chips < 100) score += 10
-      
-      // 筹码多的对手赢得多（+5分）
-      score += Math.min(p.chips / 50, 10)
-      
-      return { player: p, score }
-    })
+    // 按推测强度排序，选最弱的
+    const sorted = [...opponentProfiles].sort((a, b) => a.estimatedStrength - b.estimatedStrength)
     
-    // 按分数排序
-    scored.sort((a, b) => b.score - a.score)
-    return scored[0].player
+    // 返回推测最弱的对手
+    return sorted[0]
   }
 
-  // 分析对手的下注模式，推测牌力
+  // 分析对手的下注模式
   analyzeOpponentBehavior(opponent) {
     const behavior = {
       likelyStrong: false,
@@ -756,24 +844,20 @@ export class GameEngine {
       passive: false
     }
     
-    // 看牌后大额加注，可能是强牌
     if (opponent.hasPeeked && opponent.lastBetAmount > 30) {
       behavior.likelyStrong = true
       behavior.aggressive = true
     }
     
-    // 焖牌但下注很大，可能在诈
     if (!opponent.hasPeeked && opponent.lastBetAmount > 25) {
       behavior.likelyBluffing = true
       behavior.aggressive = true
     }
     
-    // 看牌后只是跟注，可能牌力一般
     if (opponent.hasPeeked && opponent.lastBetAmount <= 15) {
       behavior.passive = true
     }
     
-    // 焖牌且下注保守，可能在观望
     if (!opponent.hasPeeked && opponent.lastBetAmount <= 15) {
       behavior.passive = true
     }
@@ -781,73 +865,31 @@ export class GameEngine {
     return behavior
   }
 
-  // AI记忆系统：记录本局对手的行为模式
-  updateOpponentProfile(opponent, action) {
-    if (!this.opponentProfiles) {
-      this.opponentProfiles = {}
-    }
-    
-    const id = opponent.id
-    if (!this.opponentProfiles[id]) {
-      this.opponentProfiles[id] = {
-        bluffCount: 0,
-        foldCount: 0,
-        raiseCount: 0,
-        showdownWins: 0,
-        showdownLosses: 0
-      }
-    }
-    
-    const profile = this.opponentProfiles[id]
-    
-    if (action === 'fold') profile.foldCount++
-    if (action === 'raise' || action === 'blind') profile.raiseCount++
-  }
-
-  // 获取对手的历史行为倾向
-  getOpponentTendency(opponentId) {
-    if (!this.opponentProfiles || !this.opponentProfiles[opponentId]) {
-      return { isAggressive: false, isTight: false, isLoose: false }
-    }
-    
-    const profile = this.opponentProfiles[opponentId]
-    const totalActions = profile.foldCount + profile.raiseCount + 1
-    
-    return {
-      isAggressive: profile.raiseCount / totalActions > 0.5,
-      isTight: profile.foldCount / totalActions > 0.4,
-      isLoose: profile.foldCount / totalActions < 0.2
-    }
-  }
-
   // 根据玩家数动态评估牌力
   evaluateHandStrength(strength, playerCount) {
-    // 2-3人局：对子就很有价值
     if (playerCount <= 3) {
       return {
-        isMonster: strength >= 7000,  // 同花顺、豹子
-        isStrong: strength >= 5000,   // 顺子、同花
-        isMedium: strength >= 3000,   // 对子
-        isWeak: strength < 3000       // 散牌
+        isMonster: strength >= 7000,
+        isStrong: strength >= 5000,
+        isMedium: strength >= 3000,
+        isWeak: strength < 3000
       }
     }
     
-    // 4-5人局：需要顺子以上才稳
     if (playerCount <= 5) {
       return {
-        isMonster: strength >= 8000,  // 豹子
-        isStrong: strength >= 6000,   // 同花、同花顺
-        isMedium: strength >= 4000,   // 顺子、大对子
-        isWeak: strength < 4000       // 小对子、散牌
+        isMonster: strength >= 8000,
+        isStrong: strength >= 6000,
+        isMedium: strength >= 4000,
+        isWeak: strength < 4000
       }
     }
     
-    // 6-8人局：同花以上才有优势
     return {
-      isMonster: strength >= 9000,  // 豹子
-      isStrong: strength >= 7000,   // 同花顺
-      isMedium: strength >= 5000,   // 同花、顺子
-      isWeak: strength < 5000       // 对子、散牌
+      isMonster: strength >= 9000,
+      isStrong: strength >= 7000,
+      isMedium: strength >= 5000,
+      isWeak: strength < 5000
     }
   }
 

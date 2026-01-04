@@ -20,7 +20,7 @@ const pool = mysql.createPool(dbConfig)
 
 // 初始化数据库表
 async function initDatabase() {
-  const createTableSQL = `
+  const createUsersTableSQL = `
     CREATE TABLE IF NOT EXISTS users (
       id INT AUTO_INCREMENT PRIMARY KEY,
       username VARCHAR(50) UNIQUE NOT NULL,
@@ -37,8 +37,30 @@ async function initDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `
   
+  // 玩家行为档案表（AI 用于学习玩家风格）
+  const createProfilesTableSQL = `
+    CREATE TABLE IF NOT EXISTS player_profiles (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(50) UNIQUE NOT NULL,
+      total_hands INT DEFAULT 0,
+      fold_count INT DEFAULT 0,
+      raise_count INT DEFAULT 0,
+      call_count INT DEFAULT 0,
+      blind_bet_count INT DEFAULT 0,
+      showdown_wins INT DEFAULT 0,
+      showdown_losses INT DEFAULT 0,
+      bluff_caught INT DEFAULT 0,
+      big_bet_with_weak INT DEFAULT 0,
+      avg_peek_round FLOAT DEFAULT 0,
+      peek_round_samples INT DEFAULT 0,
+      updated_at BIGINT,
+      INDEX idx_username (username)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `
+  
   try {
-    await pool.execute(createTableSQL)
+    await pool.execute(createUsersTableSQL)
+    await pool.execute(createProfilesTableSQL)
     console.log('✅ 数据库表初始化成功')
   } catch (error) {
     console.error('❌ 数据库表初始化失败:', error.message)
@@ -167,3 +189,127 @@ async function importUsers(usersData) {
 }
 
 export { pool, initDatabase, getUser, getAllUsers, createUser, updateUser, importUsers }
+
+// ========== 玩家行为档案（AI 学习用）==========
+
+// 获取玩家档案
+async function getPlayerProfile(username) {
+  const [rows] = await pool.execute(
+    'SELECT * FROM player_profiles WHERE username = ?',
+    [username]
+  )
+  if (rows.length === 0) return null
+  return formatProfile(rows[0])
+}
+
+// 创建或更新玩家档案（增量更新）
+async function updatePlayerProfile(username, updates) {
+  const existing = await getPlayerProfile(username)
+  const now = Date.now()
+  
+  if (!existing) {
+    // 创建新档案
+    await pool.execute(
+      `INSERT INTO player_profiles 
+       (username, total_hands, fold_count, raise_count, call_count, blind_bet_count, 
+        showdown_wins, showdown_losses, bluff_caught, big_bet_with_weak, 
+        avg_peek_round, peek_round_samples, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        username,
+        updates.totalHands || 0,
+        updates.foldCount || 0,
+        updates.raiseCount || 0,
+        updates.callCount || 0,
+        updates.blindBetCount || 0,
+        updates.showdownWins || 0,
+        updates.showdownLosses || 0,
+        updates.bluffCaught || 0,
+        updates.bigBetWithWeak || 0,
+        updates.avgPeekRound || 0,
+        updates.peekRoundSamples || 0,
+        now
+      ]
+    )
+  } else {
+    // 增量更新
+    const fields = []
+    const values = []
+    
+    const incrementFields = {
+      totalHands: 'total_hands',
+      foldCount: 'fold_count',
+      raiseCount: 'raise_count',
+      callCount: 'call_count',
+      blindBetCount: 'blind_bet_count',
+      showdownWins: 'showdown_wins',
+      showdownLosses: 'showdown_losses',
+      bluffCaught: 'bluff_caught',
+      bigBetWithWeak: 'big_bet_with_weak'
+    }
+    
+    for (const [key, dbField] of Object.entries(incrementFields)) {
+      if (updates[key]) {
+        fields.push(`${dbField} = ${dbField} + ?`)
+        values.push(updates[key])
+      }
+    }
+    
+    // 看牌轮次用滑动平均
+    if (updates.peekRound) {
+      const newSamples = existing.peekRoundSamples + 1
+      const newAvg = (existing.avgPeekRound * existing.peekRoundSamples + updates.peekRound) / newSamples
+      fields.push('avg_peek_round = ?', 'peek_round_samples = ?')
+      values.push(newAvg, newSamples)
+    }
+    
+    if (fields.length > 0) {
+      fields.push('updated_at = ?')
+      values.push(now)
+      values.push(username)
+      
+      await pool.execute(
+        `UPDATE player_profiles SET ${fields.join(', ')} WHERE username = ?`,
+        values
+      )
+    }
+  }
+}
+
+// 批量获取玩家档案
+async function getPlayerProfiles(usernames) {
+  if (!usernames || usernames.length === 0) return {}
+  
+  const placeholders = usernames.map(() => '?').join(',')
+  const [rows] = await pool.execute(
+    `SELECT * FROM player_profiles WHERE username IN (${placeholders})`,
+    usernames
+  )
+  
+  const profiles = {}
+  for (const row of rows) {
+    profiles[row.username] = formatProfile(row)
+  }
+  return profiles
+}
+
+// 格式化档案数据
+function formatProfile(row) {
+  return {
+    username: row.username,
+    totalHands: row.total_hands,
+    foldCount: row.fold_count,
+    raiseCount: row.raise_count,
+    callCount: row.call_count,
+    blindBetCount: row.blind_bet_count,
+    showdownWins: row.showdown_wins,
+    showdownLosses: row.showdown_losses,
+    bluffCaught: row.bluff_caught,
+    bigBetWithWeak: row.big_bet_with_weak,
+    avgPeekRound: row.avg_peek_round,
+    peekRoundSamples: row.peek_round_samples,
+    updatedAt: row.updated_at
+  }
+}
+
+export { getPlayerProfile, updatePlayerProfile, getPlayerProfiles }

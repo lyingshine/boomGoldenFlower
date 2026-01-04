@@ -8,7 +8,22 @@
     <div class="player-name">{{ player.name.replace(/🎮|🤖/g, '').trim() }}</div>
     <div class="player-chips">¥{{ player.chips }}</div>
     
-    <div v-if="player.currentBet > 0" class="current-bet">
+    <!-- 已看牌状态 -->
+    <div v-if="player.hasPeeked" class="player-status peeked">
+      已看牌
+    </div>
+    
+    <!-- 已弃牌状态 -->
+    <div v-if="player.folded" class="player-status folded">
+      已弃牌
+    </div>
+    
+    <!-- All-in 状态 -->
+    <div v-if="player.isAllIn && !player.folded" class="player-status all-in">
+      All In
+    </div>
+    
+    <div v-if="player.currentBet > 0 && !player.folded" class="current-bet">
       下注: ¥{{ player.currentBet }}
     </div>
   </div>
@@ -83,6 +98,18 @@ export default {
   text-align: center;
   position: relative;
   z-index: 2;
+}
+
+.player-status.peeked {
+  color: #4fc3f7;
+  background: rgba(79, 195, 247, 0.15);
+  border-color: rgba(79, 195, 247, 0.3);
+}
+
+.player-status.folded {
+  color: #999;
+  background: rgba(100, 100, 100, 0.2);
+  border-color: rgba(100, 100, 100, 0.3);
 }
 
 .player-status.all-in {

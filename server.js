@@ -399,6 +399,30 @@ function handlePlayerAction(clientId, data) {
     return
   }
   
+  // 记录玩家行为到档案（用于 AI 学习）
+  const player = room.game.seats[seatIndex]
+  if (player && player.type === 'human') {
+    const updates = { totalHands: 1 }
+    if (action === 'fold') updates.foldCount = 1
+    if (action === 'raise') updates.raiseCount = 1
+    if (action === 'call') updates.callCount = 1
+    if (action === 'blind') updates.blindBetCount = 1
+    if (action === 'peek') updates.peekRound = room.game.state.round
+    room.updatePlayerProfile(player.name, updates)
+  }
+  
+  // 记录开牌结果
+  if (result.action === 'showdown') {
+    const winner = room.game.seats[result.winnerSeatIndex]
+    const loser = room.game.seats[result.loserSeatIndex]
+    if (winner && winner.type === 'human') {
+      room.updatePlayerProfile(winner.name, { showdownWins: 1 })
+    }
+    if (loser && loser.type === 'human') {
+      room.updatePlayerProfile(loser.name, { showdownLosses: 1 })
+    }
+  }
+  
   // 广播操作结果
   room.broadcast({
     type: 'action_result',
@@ -411,9 +435,11 @@ function handlePlayerAction(clientId, data) {
   // 每次操作后都更新用户筹码
   updateUserChips(room)
   
-  // 游戏结束时更新战绩
+  // 游戏结束时更新战绩和保存玩家档案
   if (result.action === 'gameEnd') {
     updateUsersGameStats(room, result)
+    // 异步保存玩家行为档案到数据库
+    room.savePlayerProfiles().catch(e => console.error('保存玩家档案失败:', e.message))
   }
   
   // 处理AI回合
@@ -483,13 +509,13 @@ function processAITurn(room) {
   const delay = onlyAI ? 600 : 800
   
   // 延迟执行AI决策
-  setTimeout(() => {
+  setTimeout(async () => {
     // 重新检查游戏状态
     if (game.state.phase !== 'betting') return
     
     const seatIndex = game.state.currentPlayerIndex
     const player = game.seats[seatIndex]
-    const decision = game.makeAIDecision(seatIndex)
+    const decision = await game.makeAIDecision(seatIndex)
     if (!decision) return
     
     console.log(`🤖 AI决策: 座位${seatIndex} ${decision.action}`)
@@ -497,6 +523,23 @@ function processAITurn(room) {
     const result = game.handleAction(seatIndex, decision.action, decision.amount)
     
     if (result.success) {
+      // 记录开牌结果到玩家档案
+      if (result.action === 'showdown') {
+        const winner = game.seats[result.winnerSeatIndex]
+        const loser = game.seats[result.loserSeatIndex]
+        if (winner && winner.type === 'human') {
+          room.updatePlayerProfile(winner.name, { showdownWins: 1 })
+        }
+        if (loser && loser.type === 'human') {
+          room.updatePlayerProfile(loser.name, { showdownLosses: 1 })
+        }
+      }
+      
+      // 游戏结束时保存档案
+      if (result.action === 'gameEnd') {
+        room.savePlayerProfiles().catch(e => console.error('保存玩家档案失败:', e.message))
+      }
+      
       // 生成 AI 聊天消息
       const messageContext = {
         hasStrongHand: player.hasPeeked && player.hand.getType().weight >= 7000,

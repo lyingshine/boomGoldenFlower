@@ -41,12 +41,15 @@
 import { NetworkManager } from '../utils/NetworkManager.js'
 import { UserManager } from '../utils/UserManager.js'
 
+// 单例模式，避免重复创建连接
+let sharedNetworkManager = null
+
 export default {
   name: 'LoginModal',
   emits: ['login-success'],
   data() {
     return {
-      networkManager: new NetworkManager(),
+      networkManager: null,
       userManager: null,
       username: '',
       password: '',
@@ -57,6 +60,10 @@ export default {
     }
   },
   mounted() {
+    if (!sharedNetworkManager) {
+      sharedNetworkManager = new NetworkManager()
+    }
+    this.networkManager = sharedNetworkManager
     this.userManager = new UserManager(this.networkManager)
   },
   methods: {

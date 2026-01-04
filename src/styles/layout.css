@@ -703,32 +703,59 @@
       #14532d 100%
     );
   border-radius: var(--radius-full);
-  border: 6px solid #5d4037;
+  border: 8px solid transparent;
+  background-clip: padding-box;
   box-shadow: 
     0 12px 30px rgba(0, 0, 0, 0.6),
     inset 0 0 50px rgba(0, 0, 0, 0.3),
-    0 0 0 2px rgba(255, 215, 0, 0.15),
     0 0 60px rgba(34, 197, 94, 0.1);
   margin: calc(200px + env(safe-area-inset-top)) auto 100px auto;
   display: block;
 }
 
-/* 牌桌内边框装饰 */
+/* 牌桌木质边框 */
 .new-game-table::before {
   content: '';
   position: absolute;
-  top: 15px;
-  left: 15px;
-  right: 15px;
-  bottom: 15px;
-  border: 2px solid rgba(255, 215, 0, 0.15);
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
   border-radius: var(--radius-full);
-  pointer-events: none;
+  background: 
+    linear-gradient(135deg, 
+      #8b5a2b 0%, 
+      #a0522d 15%,
+      #6b4423 30%,
+      #8b5a2b 50%,
+      #5d4037 70%,
+      #8b5a2b 85%,
+      #a0522d 100%
+    );
+  z-index: -1;
+  box-shadow: 
+    inset 0 2px 4px rgba(255, 255, 255, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
-/* 牌桌纹理 */
-.new-game-table::after {
-  content: '';
+/* 金属镶边 - 已移除 */
+
+/* 牌桌内边框装饰 - 绒布边缘 */
+.new-game-table .table-inner-border {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  border: 2px solid rgba(255, 215, 0, 0.2);
+  border-radius: var(--radius-full);
+  pointer-events: none;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+/* 牌桌纹理 - 使用单独元素 */
+.new-game-table .table-texture {
   position: absolute;
   top: 0;
   left: 0;
@@ -746,40 +773,10 @@
   pointer-events: none;
 }
 
-/* 玩家位置刻度线 */
-/* 底部4个刻度线 */
-.new-game-table::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: calc(50% - 240px);
-  width: 3px;
-  height: 20px;
-  background: rgba(255, 215, 0, 0.8);
-  box-shadow: 
-    140px 0 0 rgba(255, 215, 0, 0.8),
-    340px 0 0 rgba(255, 215, 0, 0.8),
-    480px 0 0 rgba(255, 215, 0, 0.8);
-  z-index: 5;
-  display: none;
-}
+/* 玩家位置刻度线 - 已隐藏 */
+/* 底部4个刻度线 - 已移除 */
 
-/* 顶部4个刻度线 */
-.new-game-table::before {
-  content: '';
-  position: absolute;
-  top: -5px;
-  left: calc(50% - 240px);
-  width: 3px;
-  height: 20px;
-  background: rgba(255, 215, 0, 0.8);
-  box-shadow: 
-    140px 0 0 rgba(255, 215, 0, 0.8),
-    340px 0 0 rgba(255, 215, 0, 0.8),
-    480px 0 0 rgba(255, 215, 0, 0.8);
-  z-index: 5;
-  display: none;
-}
+/* 顶部4个刻度线 - 已移除 */
 
 /* 左侧2个刻度线 */
 .new-game-table .scale-left {
@@ -1320,14 +1317,31 @@
 }
 
 .game-card.card-back {
-  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  background: linear-gradient(145deg, #1e3a8a 0%, #1d4ed8 50%, #1e40af 100%);
   color: white;
   border-color: #1e3a8a;
+  position: relative;
+  box-shadow: 
+    0 3px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .game-card.card-back::before {
   content: '🂠';
-  font-size: 18px;
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.game-card.card-back::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  pointer-events: none;
 }
 
 .player-seat.human-player .game-card.card-back::before,

@@ -32,6 +32,10 @@
       'showdown-phase': gamePhase === 'showdown' || gamePhase === 'ended',
       'betting-phase': gamePhase === 'betting'
     }">
+      <!-- 内边框装饰 -->
+      <div class="table-inner-border"></div>
+      <!-- 牌桌纹理 -->
+      <div class="table-texture"></div>
       <!-- 中央信息区 -->
       <div class="center-info">
         <div v-if="gamePhase === 'waiting'" class="pot-display waiting">
@@ -77,9 +81,13 @@
         @click="handlePlayerClick(player, index)"
       >
         <template v-if="player">
+          <!-- 当前行动指示 -->
+          <div v-if="currentPlayerIndex === index && gamePhase === 'betting' && !player.folded" class="turn-indicator">
+            到你了
+          </div>
           <div class="player-info">
             <div class="player-header">
-              <div class="player-avatar" :class="{ 'my-avatar': index === mySeatIndex }">
+              <div class="player-avatar" :class="['avatar-color-' + (index % 6), { 'my-avatar': index === mySeatIndex }]">
                 {{ index === mySeatIndex ? '😎' : (player.type === 'human' ? '🎮' : '🤖') }}
               </div>
               <div class="player-name">
@@ -240,20 +248,15 @@ export default {
     },
     showCard(player, index) {
       if (!player) return false
-      // 弃牌玩家：如果有牌数据（被开牌输了），显示给开牌者看
-      if (player.folded && player.cards && player.cards.length > index) {
-        return true
+      if (!player.cards || player.cards.length <= index) return false
+      
+      // 自己的牌：看过牌或者比牌输了才显示
+      if (player.id === this.mySeatIndex) {
+        return player.hasPeeked || player.lostShowdown
       }
-      if (player.folded) return false
-      // 自己看过牌后可以看自己的牌
-      if (player.id === this.mySeatIndex && player.hasPeeked) {
-        return player.cards && player.cards.length > index
-      }
-      // 开牌/结束阶段：只显示有牌数据的玩家（服务端只发送开牌双方的牌）
-      if (this.gamePhase === 'showdown' || this.gamePhase === 'ended') {
-        return player.cards && player.cards.length > index
-      }
-      return false
+      
+      // 别人的牌：有数据就显示（服务端只会发送你有权看到的牌）
+      return true
     },
     formatCard(card) {
       if (!card) return ''
@@ -435,6 +438,29 @@ export default {
     0 0 30px rgba(255, 215, 0, 0.25) !important;
   border-color: rgba(255, 215, 0, 0.6) !important;
   animation: myTurnGlow 2s ease-in-out infinite;
+}
+
+/* 当前行动指示标签 */
+.turn-indicator {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ffd700 0%, #f59e0b 100%);
+  color: #1a1a1a;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+  animation: turnPulse 1.5s ease-in-out infinite;
+  z-index: 10;
+}
+
+@keyframes turnPulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.05); }
 }
 
 .player-status {

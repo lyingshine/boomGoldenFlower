@@ -9,7 +9,7 @@ import { join, extname } from 'path'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import { Room } from './server/game/Room.js'
-import { initDatabase, getAllUsers, createUser, updateUser } from './server/db/mysql.js'
+import { initDatabase, getAllUsers, getUser, createUser, updateUser } from './server/db/mysql.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -303,6 +303,28 @@ function handleLeaveRoom(clientId) {
   
   // 获取房间中的客户端信息（包含seatIndex）
   const roomClient = room.clients.get(clientId)
+  
+  // 如果游戏进行中，先让玩家弃牌
+  if (roomClient && room.gameStarted && room.game.state.phase === 'betting') {
+    const player = room.game.seats[roomClient.seatIndex]
+    if (player && !player.folded) {
+      player.fold()
+      player.hasActed = true
+      console.log(`🃏 玩家离开，自动弃牌: ${client.playerName}`)
+      
+      // 检查游戏是否结束
+      const active = room.game.getActivePlayers()
+      if (active.length <= 1) {
+        room.game.endGame()
+      } else if (room.game.state.currentPlayerIndex === roomClient.seatIndex) {
+        // 如果是当前玩家，切换到下一个
+        room.game.nextPlayer()
+      }
+      
+      // 广播游戏状态
+      room.broadcastGameState()
+    }
+  }
   
   // 主动离开时更新用户筹码（已下的注不退回）
   if (roomClient) {
@@ -823,7 +845,7 @@ async function handleRegister(clientId, data) {
 }
 
 // 用户登录
-function handleLogin(clientId, data) {
+async function handleLogin(clientId, data) {
   const client = clients.get(clientId)
   const { username, password } = data
   
@@ -837,29 +859,38 @@ function handleLogin(clientId, data) {
     return
   }
   
-  if (!usersCache[username]) {
-    send(client.ws, { type: 'login_result', success: false, message: '用户不存在' })
-    return
+  try {
+    // 从数据库获取用户数据
+    const user = await getUser(username)
+    if (!user) {
+      send(client.ws, { type: 'login_result', success: false, message: '用户不存在' })
+      return
+    }
+    
+    if (user.password !== password) {
+      send(client.ws, { type: 'login_result', success: false, message: '密码错误' })
+      return
+    }
+    
+    // 更新登录时间
+    user.lastLogin = Date.now()
+    
+    // 同步更新缓存
+    usersCache[username] = user
+    saveUserData(username)
+    
+    console.log('✅ 用户登录:', username)
+    
+    send(client.ws, { 
+      type: 'login_result', 
+      success: true, 
+      message: '登录成功',
+      user: { ...user, password: undefined }
+    })
+  } catch (e) {
+    console.error('登录失败:', e.message)
+    send(client.ws, { type: 'login_result', success: false, message: '登录失败，请重试' })
   }
-  
-  const user = usersCache[username]
-  if (user.password !== password) {
-    send(client.ws, { type: 'login_result', success: false, message: '密码错误' })
-    return
-  }
-  
-  // 更新登录时间
-  user.lastLogin = Date.now()
-  saveUserData(username)
-  
-  console.log('✅ 用户登录:', username)
-  
-  send(client.ws, { 
-    type: 'login_result', 
-    success: true, 
-    message: '登录成功',
-    user: { ...user, password: undefined }
-  })
 }
 
 // 用户签到
@@ -917,20 +948,44 @@ function handleSignIn(clientId, data) {
 }
 
 // 获取用户数据
-function handleGetUser(clientId, data) {
+async function handleGetUser(clientId, data) {
   const client = clients.get(clientId)
   const { username } = data
   
-  if (!username || !usersCache[username]) {
-    send(client.ws, { type: 'get_user_result', success: false, message: '用户不存在' })
+  if (!username) {
+    send(client.ws, { type: 'get_user_result', success: false, message: '用户名不能为空' })
     return
   }
   
-  send(client.ws, {
-    type: 'get_user_result',
-    success: true,
-    user: { ...usersCache[username], password: undefined }
-  })
+  try {
+    // 从数据库获取最新数据
+    const user = await getUser(username)
+    if (!user) {
+      send(client.ws, { type: 'get_user_result', success: false, message: '用户不存在' })
+      return
+    }
+    
+    // 同步更新缓存
+    usersCache[username] = user
+    
+    send(client.ws, {
+      type: 'get_user_result',
+      success: true,
+      user: { ...user, password: undefined }
+    })
+  } catch (e) {
+    console.error('获取用户数据失败:', e.message)
+    // 降级使用缓存
+    if (usersCache[username]) {
+      send(client.ws, {
+        type: 'get_user_result',
+        success: true,
+        user: { ...usersCache[username], password: undefined }
+      })
+    } else {
+      send(client.ws, { type: 'get_user_result', success: false, message: '获取用户数据失败' })
+    }
+  }
 }
 
 // 获取排行榜

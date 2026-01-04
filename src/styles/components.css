@@ -203,6 +203,32 @@
     0 0 20px rgba(255, 215, 0, 0.4);
 }
 
+/* 头像颜色变体 */
+.player-avatar.avatar-color-0 {
+  background: radial-gradient(ellipse at 30% 30%, #f472b6 0%, #ec4899 50%, #be185d 100%);
+  border-color: #9d174d;
+}
+.player-avatar.avatar-color-1 {
+  background: radial-gradient(ellipse at 30% 30%, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%);
+  border-color: #1e40af;
+}
+.player-avatar.avatar-color-2 {
+  background: radial-gradient(ellipse at 30% 30%, #a78bfa 0%, #8b5cf6 50%, #6d28d9 100%);
+  border-color: #5b21b6;
+}
+.player-avatar.avatar-color-3 {
+  background: radial-gradient(ellipse at 30% 30%, #fb923c 0%, #f97316 50%, #c2410c 100%);
+  border-color: #9a3412;
+}
+.player-avatar.avatar-color-4 {
+  background: radial-gradient(ellipse at 30% 30%, #4ade80 0%, #22c55e 50%, #15803d 100%);
+  border-color: #166534;
+}
+.player-avatar.avatar-color-5 {
+  background: radial-gradient(ellipse at 30% 30%, #f87171 0%, #ef4444 50%, #b91c1c 100%);
+  border-color: #991b1b;
+}
+
 /* 头像光泽效果 */
 .player-avatar::before {
   content: '';

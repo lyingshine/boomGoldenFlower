@@ -1,5 +1,20 @@
 /* 响应式设计 - 优化移动端体验 */
 
+/* 移动端禁止页面滚动 */
+@media (max-width: 768px) {
+  html, body {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+  }
+  
+  .game-container {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* 4人及以下居中布局 - 移动端 */
 @media (max-width: 768px) {
   /* 座位0：底部中间 */
@@ -72,13 +87,13 @@
   
   /* 座位6：左侧中间 */
   .players-area.centered-layout .player-seat.seat-6 {
-    left: -80px !important;
+    left: -88px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
     flex-direction: row-reverse !important;
   }
   .players-area.centered-layout .player-seat.seat-6 .player-cards {
-    left: 100px !important;
+    left: 95px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
     flex-direction: column !important;
@@ -105,7 +120,7 @@
   
   /* 座位2：右侧中间 */
   .players-area.centered-layout .player-seat.seat-2 {
-    right: -80px !important;
+    right: -88px !important;
     left: auto !important;
     bottom: auto !important;
     top: 50% !important;
@@ -113,7 +128,7 @@
     flex-direction: row !important;
   }
   .players-area.centered-layout .player-seat.seat-2 .player-cards {
-    right: 100px !important;
+    right: 95px !important;
     left: auto !important;
     bottom: auto !important;
     top: 50% !important;
@@ -306,8 +321,8 @@
   
   /* 牌桌 - 移动端专用布局 */
   .new-game-table {
-    width: 60vw;
-    max-width: 320px;
+    width: 52vw;
+    max-width: 280px;
     height: 340px;
     margin: calc(180px + env(safe-area-inset-top)) auto 30px auto;
     border-width: 5px;
@@ -319,25 +334,54 @@
     overflow: visible;
   }
   
+  /* 移动端木质边框 */
   .new-game-table::before {
-    top: 8px;
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
-    border-radius: var(--radius-full);
+    top: -8px !important;
+    left: -8px !important;
+    right: -8px !important;
+    bottom: -8px !important;
+    border-radius: var(--radius-full) !important;
+    background: 
+      linear-gradient(135deg, 
+        #8b5a2b 0%, 
+        #a0522d 15%,
+        #6b4423 30%,
+        #8b5a2b 50%,
+        #5d4037 70%,
+        #8b5a2b 85%,
+        #a0522d 100%
+      ) !important;
+    z-index: -1 !important;
+    box-shadow: 
+      inset 0 2px 4px rgba(255, 255, 255, 0.2),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.3),
+      0 4px 8px rgba(0, 0, 0, 0.4) !important;
+  }
+  
+  /* 移动端金属镶边 - 已移除 */
+  .new-game-table::after {
+    display: none !important;
+  }
+  
+  /* 移动端内边框 */
+  .new-game-table .table-inner-border {
+    top: 8px !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: 8px !important;
   }
   
   /* 中央底池信息 */
   .pot-display {
-    width: 140px;
-    padding: 10px 12px;
-    border-radius: var(--radius-2xl);
+    width: 120px;
+    padding: 8px 10px;
+    border-radius: var(--radius-xl);
   }
   
   /* 移动端结算界面缩小 */
   .pot-display.winner-info {
-    width: 130px;
-    padding: 8px 12px;
+    width: 110px;
+    padding: 6px 10px;
   }
   
   .pot-display.winner-info .winner-crown {
@@ -360,25 +404,25 @@
   }
   
   .pot-label {
-    font-size: 9px;
+    font-size: 8px;
     letter-spacing: 1px;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
   
   .pot-value {
-    font-size: 18px;
-    margin-bottom: 6px;
+    font-size: 16px;
+    margin-bottom: 4px;
   }
   
   .game-status-text {
-    font-size: 9px;
-    padding: 4px 8px;
+    font-size: 8px;
+    padding: 3px 6px;
   }
   
   .pot-display .current-turn {
-    font-size: 9px;
-    padding: 3px 6px;
-    margin-top: 4px;
+    font-size: 8px;
+    padding: 2px 5px;
+    margin-top: 3px;
   }
   
   /* 玩家信息卡片 - 紧凑版 */
@@ -442,7 +486,14 @@
   }
   
   .game-card.card-back::before {
-    font-size: 10px;
+    font-size: 9px;
+  }
+  
+  .game-card.card-back::after {
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
   }
   
   .player-cards {
@@ -459,7 +510,14 @@
   }
   
   .player-seat.human-player .game-card.card-back::before {
-    font-size: 14px;
+    font-size: 12px;
+  }
+  
+  .player-seat.human-player .game-card.card-back::after {
+    top: 3px;
+    left: 3px;
+    right: 3px;
+    bottom: 3px;
   }
   
   /* 开牌阶段的牌 - 统一尺寸 */
@@ -499,14 +557,14 @@
   .player-seat.seat-2 {
     bottom: auto;
     left: auto;
-    right: -80px;
+    right: -88px;
     top: calc(50% + 30px);
     flex-direction: row;
   }
   .player-seat.seat-2 .player-cards {
     position: absolute;
     bottom: auto;
-    right: 100px;
+    right: 130px;
     left: auto;
     top: 50%;
     transform: translateY(-50%);
@@ -516,14 +574,14 @@
   .player-seat.seat-3 {
     bottom: auto;
     left: auto;
-    right: -80px;
+    right: -88px;
     top: calc(50% - 90px);
     flex-direction: row;
   }
   .player-seat.seat-3 .player-cards {
     position: absolute;
     bottom: auto;
-    right: 100px;
+    right: 130px;
     left: auto;
     top: 50%;
     transform: translateY(-50%);
@@ -569,26 +627,26 @@
   
   /* 左侧2个玩家 - 牌在牌桌内 */
   .player-seat.seat-6 {
-    left: -80px;
+    left: -88px;
     top: calc(50% - 90px);
     flex-direction: row-reverse;
   }
   .player-seat.seat-6 .player-cards {
     position: absolute;
-    left: 100px;
+    left: 130px;
     top: 50%;
     transform: translateY(-50%);
     flex-direction: column;
   }
   
   .player-seat.seat-7 {
-    left: -80px;
+    left: -88px;
     top: calc(50% + 30px);
     flex-direction: row-reverse;
   }
   .player-seat.seat-7 .player-cards {
     position: absolute;
-    left: 100px;
+    left: 130px;
     top: 50%;
     transform: translateY(-50%);
     flex-direction: column;
@@ -1099,9 +1157,9 @@
     margin-top: calc(220px + env(safe-area-inset-top)) !important;
   }
   
-  /* 控制器位置调整 */
+  /* 控制器位置调整 - 往上提 */
   .game-controls-wrapper {
-    bottom: calc(0px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(15px + env(safe-area-inset-bottom, 0px)) !important;
     min-width: 400px !important;
     padding: 28px 20px !important;
     gap: 16px !important;
@@ -1156,8 +1214,44 @@
   .players-area.centered-layout .player-seat.seat-0 .player-cards { bottom: 150px !important; }
   .players-area.centered-layout .player-seat.seat-5 { top: -130px !important; }
   .players-area.centered-layout .player-seat.seat-5 .player-cards { top: 150px !important; }
-  .players-area.centered-layout .player-seat.seat-2 .player-cards { right: 100px !important; }
-  .players-area.centered-layout .player-seat.seat-6 .player-cards { left: 100px !important; }
+  .players-area.centered-layout .player-seat.seat-2 .player-cards { right: 85px !important; }
+  .players-area.centered-layout .player-seat.seat-6 .player-cards { left: 85px !important; }
+}
+
+/* 标准屏手机 (380px-500px) */
+@media (max-width: 500px) and (max-height: 900px) {
+  .game-controls-wrapper {
+    min-width: 340px !important;
+    padding: 14px 12px !important;
+    gap: 10px !important;
+    border-radius: 20px !important;
+  }
+  
+  .btn {
+    padding: 10px 12px !important;
+    font-size: 11px !important;
+    min-width: 70px !important;
+    border-radius: 8px !important;
+  }
+  
+  .btn-large {
+    padding: 12px 16px !important;
+    font-size: 12px !important;
+    min-width: 90px !important;
+  }
+  
+  .bet-inline .btn {
+    min-width: 75px !important;
+    padding: 10px 10px !important;
+    font-size: 11px !important;
+  }
+  
+  .adj-btn {
+    width: 28px !important;
+    height: 40px !important;
+    font-size: 16px !important;
+    border-radius: 6px !important;
+  }
 }
 
 /* 小屏手机 */
@@ -1236,6 +1330,30 @@
   
   .game-controls {
     gap: 4px;
+  }
+  
+  .game-controls-wrapper {
+    min-width: 320px !important;
+    padding: 12px 10px !important;
+    gap: 8px !important;
+  }
+  
+  .btn-large {
+    padding: 10px 14px !important;
+    font-size: 11px !important;
+    min-width: 80px !important;
+  }
+  
+  .bet-inline .btn {
+    min-width: 65px !important;
+    padding: 8px 8px !important;
+    font-size: 10px !important;
+  }
+  
+  .adj-btn {
+    width: 26px !important;
+    height: 36px !important;
+    font-size: 14px !important;
   }
 }
 

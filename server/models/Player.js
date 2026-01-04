@@ -49,6 +49,7 @@ export class Player {
     this.folded = false
     this.lostShowdown = false
     this.showdownBy = null
+    this.showdownWith = null
     this.hasPeeked = false
     this.isAllIn = false
     this.hasActed = false

@@ -19,9 +19,21 @@
           <button v-if="!myPlayer.hasPeeked" @click="$emit('peek')" class="btn btn-info btn-small">
             👁️ 看牌
           </button>
-          <button @click="confirmFold" class="btn btn-danger btn-small">
-            🚫 弃牌
-          </button>
+          <!-- 滑动弃牌 -->
+          <div class="slide-fold-container" ref="slideContainer">
+            <div class="slide-track">
+              <span class="slide-hint">{{ slideProgress > 0.8 ? '松开弃牌' : '滑动弃牌 →' }}</span>
+            </div>
+            <div 
+              class="slide-thumb" 
+              :style="{ left: slideLeft + 'px' }"
+              @mousedown="startSlide"
+              @touchstart="startSlide"
+            >
+              🚫
+            </div>
+            <div class="slide-progress" :style="{ width: slideProgress * 100 + '%' }"></div>
+          </div>
         </div>
         
         <!-- 第二行：跟注/焖牌（轮到我时显示） -->
@@ -46,11 +58,11 @@
         </div>
 
         <!-- 第三行：开牌按钮（轮到我且有对手时显示） -->
-        <div v-if="isMyTurn && canShowdown && showdownTargets.length > 0" class="controls-row secondary-row">
-          <button v-if="showdownTargets.length === 1" @click="$emit('showdown', showdownTargets[0].id)" class="btn btn-showdown btn-small">
+        <div v-if="isMyTurn && showdownTargets.length > 0" class="controls-row secondary-row">
+          <button v-if="showdownTargets.length === 1" @click="$emit('showdown', showdownTargets[0].id)" :disabled="!firstRoundComplete" class="btn btn-showdown btn-small">
             ⚔️ 开牌 ¥{{ showdownCost }}
           </button>
-          <button v-else @click="enterShowdownMode" :class="['btn', 'btn-showdown', 'btn-small', { 'showdown-mode-active': showdownMode }]">
+          <button v-else @click="enterShowdownMode" :disabled="!firstRoundComplete" :class="['btn', 'btn-showdown', 'btn-small', { 'showdown-mode-active': showdownMode }]">
             {{ showdownMode ? '点击对手开牌' : '⚔️ 开牌' }} ¥{{ showdownCost }}
           </button>
           <button v-if="showdownMode" @click="cancelShowdownMode" class="btn btn-danger btn-small">
@@ -89,13 +101,17 @@
 <script>
 export default {
   name: 'GameControls',
-  props: ['gamePhase', 'isHost', 'isMyTurn', 'myPlayer', 'canCall', 'canRaise', 'canShowdown', 'canBlind', 'currentBet', 'showdownTargets', 'showdownCost', 'callAmount', 'blindMinAmount'],
+  props: ['gamePhase', 'isHost', 'isMyTurn', 'myPlayer', 'canCall', 'canRaise', 'canShowdown', 'canBlind', 'currentBet', 'showdownTargets', 'showdownCost', 'callAmount', 'blindMinAmount', 'firstRoundComplete'],
   emits: ['start-game', 'peek', 'call', 'raise', 'fold', 'showdown', 'blind', 'showdown-mode-change'],
   data() {
     return {
       showdownMode: false,
       callBetAmount: 10,
-      blindBetAmount: 10
+      blindBetAmount: 10,
+      slideLeft: 0,
+      slideProgress: 0,
+      isSliding: false,
+      slideStartX: 0
     }
   },
   watch: {
@@ -116,10 +132,36 @@ export default {
     }
   },
   methods: {
-    confirmFold() {
-      if (confirm('确定要弃牌吗？')) {
+    startSlide(e) {
+      this.isSliding = true
+      this.slideStartX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX
+      document.addEventListener('mousemove', this.onSlide)
+      document.addEventListener('mouseup', this.endSlide)
+      document.addEventListener('touchmove', this.onSlide)
+      document.addEventListener('touchend', this.endSlide)
+    },
+    onSlide(e) {
+      if (!this.isSliding) return
+      const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX
+      const container = this.$refs.slideContainer
+      if (!container) return
+      const maxSlide = container.offsetWidth - 36
+      const delta = clientX - this.slideStartX
+      this.slideLeft = Math.max(0, Math.min(delta, maxSlide))
+      this.slideProgress = this.slideLeft / maxSlide
+    },
+    endSlide() {
+      this.isSliding = false
+      document.removeEventListener('mousemove', this.onSlide)
+      document.removeEventListener('mouseup', this.endSlide)
+      document.removeEventListener('touchmove', this.onSlide)
+      document.removeEventListener('touchend', this.endSlide)
+      
+      if (this.slideProgress > 0.8) {
         this.$emit('fold')
       }
+      this.slideLeft = 0
+      this.slideProgress = 0
     },
     enterShowdownMode() {
       this.showdownMode = true
@@ -226,6 +268,13 @@ export default {
   transform: translateY(-1px);
 }
 
+.btn-showdown:disabled {
+  background: linear-gradient(145deg, #6b7280 0%, #4b5563 50%, #374151 100%);
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .btn-showdown.showdown-mode-active {
   background: linear-gradient(145deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
   animation: pulse 1s ease-in-out infinite;
@@ -264,12 +313,12 @@ export default {
 }
 
 .adj-btn {
-  width: 32px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border: none;
   background: rgba(255, 255, 255, 0.1);
   color: white;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
@@ -353,6 +402,68 @@ export default {
   background: rgba(239, 68, 68, 0.1);
   border-radius: var(--radius-xl);
   border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* 滑动弃牌样式 */
+.slide-fold-container {
+  position: relative;
+  width: 120px;
+  height: 36px;
+  background: rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+}
+
+.slide-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+  white-space: nowrap;
+  padding-left: 28px;
+}
+
+.slide-thumb {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(145deg, #ef4444 0%, #dc2626 100%);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  transition: box-shadow 0.2s;
+  z-index: 2;
+}
+
+.slide-thumb:active {
+  cursor: grabbing;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+}
+
+.slide-progress {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.4) 0%, rgba(239, 68, 68, 0.6) 100%);
+  pointer-events: none;
+  z-index: 1;
 }
 
 @media (max-width: 768px) {

@@ -31,11 +31,11 @@
             </div>
           </div>
           <div class="menu-divider"></div>
-          <button type="button" class="menu-btn lobby-btn" @click.stop="handleBackToLobby">
+          <button type="button" class="menu-btn lobby-btn" @click.stop="showLobbyConfirm = true">
             🏠 返回大厅
           </button>
-          <button type="button" class="menu-btn logout-btn" @click.stop="handleLogout">
-            🚪 退出登录
+          <button v-if="showLobbyConfirm" type="button" class="menu-btn confirm-btn" @click.stop="confirmBackToLobby">
+            确认返回
           </button>
         </div>
       </div>
@@ -77,7 +77,8 @@ export default {
     return {
       showMenu: false,
       showRoomInfo: false,
-      copied: false
+      copied: false,
+      showLobbyConfirm: false
     }
   },
   computed: {
@@ -117,16 +118,16 @@ export default {
     closeAllMenus() {
       this.showMenu = false
       this.showRoomInfo = false
+      this.showLobbyConfirm = false
+    },
+    confirmBackToLobby() {
+      this.showMenu = false
+      this.showLobbyConfirm = false
+      this.$emit('back-to-lobby', { manual: true })
     },
     handleBackToLobby() {
-      const inGame = this.gamePhase === 'betting'
-      const message = inGame 
-        ? '返回大厅将弃牌离开当前对局，确定吗？' 
-        : '确定返回大厅？'
-      if (confirm(message)) {
-        this.showMenu = false
-        this.$emit('back-to-lobby', { manual: true })
-      }
+      // 保留此方法以防其他地方调用
+      this.showLobbyConfirm = true
     },
     handleLogout() {
       if (confirm('确定要退出登录吗？')) {
@@ -334,7 +335,7 @@ export default {
   border: 1px solid rgba(255, 215, 0, 0.3);
   border-radius: 12px;
   padding: 12px;
-  min-width: 160px;
+  min-width: 180px;
   z-index: 1000;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
@@ -417,17 +418,17 @@ export default {
   background: rgba(59, 130, 246, 0.6);
 }
 
-.menu-btn.logout-btn {
-  background: rgba(239, 68, 68, 0.8);
+.menu-btn.confirm-btn {
+  background: rgba(34, 197, 94, 0.9);
   color: white;
 }
 
-.menu-btn.logout-btn:hover {
-  background: rgba(239, 68, 68, 1);
+.menu-btn.confirm-btn:hover {
+  background: rgba(34, 197, 94, 1);
 }
 
-.menu-btn.logout-btn:active {
-  background: rgba(239, 68, 68, 0.6);
+.menu-btn.confirm-btn:active {
+  background: rgba(34, 197, 94, 0.7);
 }
 
 .menu-overlay {

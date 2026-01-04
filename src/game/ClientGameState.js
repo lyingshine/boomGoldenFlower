@@ -30,6 +30,7 @@ export class ClientGameState {
     this.showdownReady = state.showdownReady || false
     this.winner = state.winner || null
     this.showdownResult = state.showdownResult || null
+    this.firstRoundComplete = state.firstRoundComplete || false
 
     // 更新座位信息
     if (state.seats) {
@@ -164,6 +165,8 @@ export class ClientGameState {
 
   // 判断是否可以开牌
   canShowdown() {
+    // 第一轮未完成不能开牌
+    if (!this.firstRoundComplete) return false
     const me = this.getMyPlayer()
     if (!me || me.folded || !this.isMyTurn()) return false
     const showdownCost = this.getCallAmount()

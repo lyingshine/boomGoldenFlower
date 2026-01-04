@@ -57,6 +57,8 @@ export class GameEngine {
   // 发牌动画结束后切换到下注阶段
   finishDealing() {
     this.state.setPhase('betting')
+    // 记录初始玩家数，用于判断第一轮是否完成
+    this.state.initialPlayerCount = this.getActivePlayers().length
   }
 
   dealCards() {
@@ -349,6 +351,11 @@ export class GameEngine {
 
   // 开牌：选择一个对手比牌，输的弃牌
   handleShowdown(challenger, targetSeatIndex) {
+    // 第一轮不能开牌
+    if (!this.state.firstRoundComplete) {
+      return { success: false, error: '第一轮不能开牌' }
+    }
+    
     const target = this.seats[targetSeatIndex]
     if (!target || target.folded) {
       return { success: false, error: '目标玩家无效' }
@@ -391,6 +398,11 @@ export class GameEngine {
     loser.lostShowdown = true
     loser.showdownBy = challenger.id  // 记录是被谁开的牌
     loser.hasActed = true
+    
+    // 记录开牌双方关系，用于结束时显示牌
+    challenger.showdownWith = Number(targetSeatIndex)
+    target.showdownWith = Number(challenger.id)
+    console.log(`📋 开牌关系: challenger(${challenger.id}).showdownWith=${targetSeatIndex}, target(${targetSeatIndex}).showdownWith=${challenger.id}`)
 
     // 记录开牌结果
     this.state.showdownResult = {
@@ -433,6 +445,12 @@ export class GameEngine {
     if (active.length <= 1) {
       this.endGame()
       return
+    }
+
+    // 行动计数+1，检查第一轮是否完成
+    this.state.actionCount++
+    if (!this.state.firstRoundComplete && this.state.actionCount >= this.state.initialPlayerCount) {
+      this.state.firstRoundComplete = true
     }
 
     const actionable = this.getActionablePlayers()
@@ -574,7 +592,7 @@ export class GameEngine {
     const avgOppStrength = this.getAverageOpponentStrength(opponentProfiles)
     
     // ========== 开牌决策 ==========
-    if (activePlayers.length >= 1) {
+    if (activePlayers.length >= 1 && this.state.firstRoundComplete) {
       const showdownDecision = this.considerShowdown(player, strength, opponentProfiles, activePlayers)
       if (showdownDecision) return showdownDecision
     }
@@ -1169,12 +1187,26 @@ export class GameEngine {
 
   getStateForPlayer(seatIndex) {
     const state = this.state.toJSON()
+    const me = this.seats[seatIndex]
+    
     const seats = this.seats.map((p, i) => {
       if (!p) return null
+      // 自己的牌始终可见
       if (i === seatIndex) return p.toPrivateJSON()
-      if (this.state.phase === 'showdown' || this.state.phase === 'ended') return p.toFullJSON()
-      // 被开牌输掉的玩家，只有发起开牌的人能看到手牌
-      if (p.lostShowdown && p.showdownBy === seatIndex) return p.toFullJSON()
+      
+      // 我和这个玩家有开牌关系（无论谁发起、谁输赢、游戏是否结束）
+      const myShowdownWith = me?.showdownWith
+      const theirShowdownWith = p.showdownWith
+      
+      // 调试日志
+      if (myShowdownWith !== undefined || theirShowdownWith !== undefined) {
+        console.log(`🔍 座位${seatIndex}视角看座位${i}: myShowdownWith=${myShowdownWith}, theirShowdownWith=${theirShowdownWith}`)
+      }
+      
+      if (myShowdownWith === i || theirShowdownWith === seatIndex) {
+        return p.toFullJSON()
+      }
+      
       return p.toPublicJSON()
     })
     return { ...state, seats }

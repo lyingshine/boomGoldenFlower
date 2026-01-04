@@ -65,6 +65,7 @@
         :call-amount="callAmount"
         :blind-min-amount="blindMinAmount"
         :current-bet="currentBet"
+        :first-round-complete="firstRoundComplete"
         @start-game="startNewGame"
         @peek="sendAction('peek')"
         @call="onCall"
@@ -133,6 +134,7 @@ export default {
     canShowdown() { return this.gameState.canShowdown() },
     showdownTargets() { return this.gameState.getShowdownTargets() },
     showdownCost() { return this.gameState.getShowdownCost() },
+    firstRoundComplete() { return this.gameState.firstRoundComplete },
     gameStats() { return { round: this.gameState.round, activePlayers: this.gameState.getActivePlayers().length } }
   },
   mounted() {

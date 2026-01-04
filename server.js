@@ -4,44 +4,86 @@
  */
 import { WebSocketServer } from 'ws'
 import { Room } from './server/game/Room.js'
-import fs from 'fs'
-import path from 'path'
+import { initDatabase, getAllUsers, createUser, updateUser } from './server/db/mysql.js'
 
 const PORT = 3001
-const wss = new WebSocketServer({ port: PORT })
 
 // 房间管理
 const rooms = new Map()
 // 客户端管理
 const clients = new Map()
 
-// 用户数据文件路径
-const USERS_FILE = './users_data.json'
+// 内存缓存用户数据（减少数据库查询）
+let usersCache = {}
 
-// 加载用户数据
-function loadUsersData() {
+// 从数据库加载用户到缓存
+async function loadUsersToCache() {
   try {
-    if (fs.existsSync(USERS_FILE)) {
-      const data = fs.readFileSync(USERS_FILE, 'utf8')
-      return JSON.parse(data)
-    }
+    const users = await getAllUsers()
+    usersCache = {}
+    users.forEach(user => {
+      usersCache[user.username] = user
+    })
+    console.log(`✅ 加载了 ${users.length} 个用户到缓存`)
   } catch (e) {
     console.error('加载用户数据失败:', e)
   }
-  return {}
 }
 
-// 保存用户数据
-function saveUsersData(users) {
+// 保存用户数据到数据库
+async function saveUserData(username) {
+  const user = usersCache[username]
+  if (!user) return
+  
   try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2))
+    await updateUser(username, user)
   } catch (e) {
     console.error('保存用户数据失败:', e)
   }
 }
 
-// 全局用户数据
-let usersData = loadUsersData()
+// 初始化数据库并启动服务器
+async function startServer() {
+  try {
+    await initDatabase()
+    await loadUsersToCache()
+    
+    const wss = new WebSocketServer({ port: PORT })
+    setupWebSocket(wss)
+    
+    console.log(`🎮 诈金花游戏服务器启动在端口 ${PORT}`)
+  } catch (error) {
+    console.error('❌ 服务器启动失败:', error)
+    process.exit(1)
+  }
+}
+
+// 设置 WebSocket
+function setupWebSocket(wss) {
+  wss.on('connection', (ws) => {
+    const clientId = generateId()
+    clients.set(clientId, { ws, roomCode: null, playerName: null })
+    
+    console.log(`✅ 新客户端连接: ${clientId}`)
+    
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message)
+        handleMessage(clientId, data)
+      } catch (error) {
+        console.error('消息解析错误:', error)
+      }
+    })
+    
+    ws.on('close', () => {
+      console.log(`❌ 客户端断开: ${clientId}`)
+      handleDisconnect(clientId)
+      clients.delete(clientId)
+    })
+    
+    send(ws, { type: 'connected', clientId })
+  })
+}
 
 // 定期检查断线超时，更新筹码
 setInterval(() => {
@@ -49,9 +91,9 @@ setInterval(() => {
     room.disconnectedPlayers.forEach((info, seatIndex) => {
       if (Date.now() - info.disconnectedAt >= room.reconnectTimeout) {
         // 超时，更新用户筹码
-        if (info.playerName && usersData[info.playerName]) {
-          usersData[info.playerName].chips = info.chips
-          saveUsersData(usersData)
+        if (info.playerName && usersCache[info.playerName]) {
+          usersCache[info.playerName].chips = info.chips
+          saveUserData(info.playerName)
           console.log(`⏰ 重连超时，更新筹码: ${info.playerName} -> ${info.chips}`)
         }
         room.disconnectedPlayers.delete(seatIndex)
@@ -61,31 +103,8 @@ setInterval(() => {
   })
 }, 30000) // 每30秒检查一次
 
-console.log(`🎮 诈金花游戏服务器启动在端口 ${PORT}`)
-
-wss.on('connection', (ws) => {
-  const clientId = generateId()
-  clients.set(clientId, { ws, roomCode: null, playerName: null })
-  
-  console.log(`✅ 新客户端连接: ${clientId}`)
-  
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message)
-      handleMessage(clientId, data)
-    } catch (error) {
-      console.error('消息解析错误:', error)
-    }
-  })
-  
-  ws.on('close', () => {
-    console.log(`❌ 客户端断开: ${clientId}`)
-    handleDisconnect(clientId)
-    clients.delete(clientId)
-  })
-  
-  send(ws, { type: 'connected', clientId })
-})
+// 启动服务器
+startServer()
 
 function handleMessage(clientId, data) {
   const handlers = {
@@ -118,7 +137,7 @@ function handleCreateRoom(clientId, data) {
   const client = clients.get(clientId)
   
   // 获取玩家真实筹码
-  const userChips = usersData[playerName]?.chips || 1000
+  const userChips = usersCache[playerName]?.chips || 1000
   
   const room = new Room(roomCode, clientId, playerName)
   room.addClient(clientId, client.ws, playerName, userChips)
@@ -149,7 +168,7 @@ function handleJoinRoom(clientId, data) {
   }
   
   // 获取玩家真实筹码
-  const userChips = usersData[playerName]?.chips || 1000
+  const userChips = usersCache[playerName]?.chips || 1000
   
   const result = room.addClient(clientId, client.ws, playerName, userChips)
   if (!result) {
@@ -248,7 +267,7 @@ function handleLeaveRoom(clientId) {
 // 离开房间时更新用户筹码
 // isDisconnect: true表示断线，false表示主动离开
 function updateUserChipsOnLeave(playerName, seatIndex, room, isDisconnect) {
-  if (!playerName || !usersData[playerName]) return
+  if (!playerName || !usersCache[playerName]) return
   if (seatIndex === -1 || seatIndex === undefined) return
   
   const player = room.game.seats[seatIndex]
@@ -257,8 +276,8 @@ function updateUserChipsOnLeave(playerName, seatIndex, room, isDisconnect) {
   // 主动离开：保存当前筹码（已下的注不退回）
   // 断线：不更新筹码，等待重连
   if (!isDisconnect) {
-    usersData[playerName].chips = player.chips
-    saveUsersData(usersData)
+    usersCache[playerName].chips = player.chips
+    saveUserData(playerName)
     console.log(`💰 主动离开，更新筹码: ${playerName} -> ${player.chips}`)
   } else {
     console.log(`⏸️ 断线，保留筹码等待重连: ${playerName}`)
@@ -407,19 +426,18 @@ function handlePlayerAction(clientId, data) {
 function updateUserChips(room) {
   room.clients.forEach((client) => {
     const playerName = client.playerName
-    if (!playerName || !usersData[playerName]) return
+    if (!playerName || !usersCache[playerName]) return
     
     const player = room.game.seats[client.seatIndex]
     if (!player || player.type !== 'human') return
     
     // 更新筹码
-    if (usersData[playerName].chips !== player.chips) {
-      usersData[playerName].chips = player.chips
+    if (usersCache[playerName].chips !== player.chips) {
+      usersCache[playerName].chips = player.chips
+      saveUserData(playerName)
       console.log(`💰 更新筹码: ${playerName} -> ${player.chips}`)
     }
   })
-  
-  saveUsersData(usersData)
 }
 
 // 游戏结束后更新战绩
@@ -428,24 +446,23 @@ function updateUsersGameStats(room, result) {
   
   room.clients.forEach((client) => {
     const playerName = client.playerName
-    if (!playerName || !usersData[playerName]) return
+    if (!playerName || !usersCache[playerName]) return
     
     const player = room.game.seats[client.seatIndex]
     if (!player || player.type !== 'human') return
     
     // 更新战绩
-    usersData[playerName].totalGames = (usersData[playerName].totalGames || 0) + 1
+    usersCache[playerName].totalGames = (usersCache[playerName].totalGames || 0) + 1
     
     if (client.seatIndex === winnerSeatIndex) {
-      usersData[playerName].wins = (usersData[playerName].wins || 0) + 1
+      usersCache[playerName].wins = (usersCache[playerName].wins || 0) + 1
     } else {
-      usersData[playerName].losses = (usersData[playerName].losses || 0) + 1
+      usersCache[playerName].losses = (usersCache[playerName].losses || 0) + 1
     }
     
+    saveUserData(playerName)
     console.log(`📊 更新战绩: ${playerName}`)
   })
-  
-  saveUsersData(usersData)
 }
 
 // 处理AI回合
@@ -630,19 +647,19 @@ function handleSyncUser(clientId, data) {
   if (!user || !user.username) return
   
   // 更新或创建用户数据
-  usersData[user.username] = {
-    ...usersData[user.username],
+  usersCache[user.username] = {
+    ...usersCache[user.username],
     ...user,
     lastSync: Date.now()
   }
   
-  saveUsersData(usersData)
+  saveUserData(user.username)
   
   send(client.ws, { type: 'user_synced', success: true })
 }
 
 // 用户注册
-function handleRegister(clientId, data) {
+async function handleRegister(clientId, data) {
   const client = clients.get(clientId)
   const { username, password } = data
   
@@ -666,35 +683,33 @@ function handleRegister(clientId, data) {
     return
   }
   
-  if (usersData[username]) {
+  if (usersCache[username]) {
     send(client.ws, { type: 'register_result', success: false, message: '用户名已存在' })
     return
   }
   
-  // 创建新用户
-  usersData[username] = {
-    username: username.trim(),
-    password: password,
-    chips: 1000,
-    totalGames: 0,
-    wins: 0,
-    losses: 0,
-    createdAt: Date.now(),
-    lastLogin: Date.now(),
-    lastSignIn: null,
-    signInStreak: 0,
-    totalSignIns: 0
+  try {
+    // 创建新用户到数据库
+    const newUser = await createUser({
+      username: username.trim(),
+      password: password
+    })
+    
+    // 更新缓存
+    usersCache[username] = newUser
+    
+    console.log('📝 注册新用户:', username)
+    
+    send(client.ws, { 
+      type: 'register_result', 
+      success: true, 
+      message: '注册成功',
+      user: { ...newUser, password: undefined }
+    })
+  } catch (e) {
+    console.error('注册失败:', e)
+    send(client.ws, { type: 'register_result', success: false, message: '注册失败，请重试' })
   }
-  
-  saveUsersData(usersData)
-  console.log('📝 注册新用户:', username)
-  
-  send(client.ws, { 
-    type: 'register_result', 
-    success: true, 
-    message: '注册成功',
-    user: { ...usersData[username], password: undefined }
-  })
 }
 
 // 用户登录
@@ -712,12 +727,12 @@ function handleLogin(clientId, data) {
     return
   }
   
-  if (!usersData[username]) {
+  if (!usersCache[username]) {
     send(client.ws, { type: 'login_result', success: false, message: '用户不存在' })
     return
   }
   
-  const user = usersData[username]
+  const user = usersCache[username]
   if (user.password !== password) {
     send(client.ws, { type: 'login_result', success: false, message: '密码错误' })
     return
@@ -725,7 +740,7 @@ function handleLogin(clientId, data) {
   
   // 更新登录时间
   user.lastLogin = Date.now()
-  saveUsersData(usersData)
+  saveUserData(username)
   
   console.log('✅ 用户登录:', username)
   
@@ -742,12 +757,12 @@ function handleSignIn(clientId, data) {
   const client = clients.get(clientId)
   const { username } = data
   
-  if (!username || !usersData[username]) {
+  if (!username || !usersCache[username]) {
     send(client.ws, { type: 'sign_in_result', success: false, message: '用户不存在' })
     return
   }
   
-  const user = usersData[username]
+  const user = usersCache[username]
   const today = new Date().toDateString()
   const lastSignIn = user.lastSignIn ? new Date(user.lastSignIn).toDateString() : null
   
@@ -779,7 +794,7 @@ function handleSignIn(clientId, data) {
   user.totalSignIns = (user.totalSignIns || 0) + 1
   user.chips += reward
   
-  saveUsersData(usersData)
+  saveUserData(username)
   
   send(client.ws, {
     type: 'sign_in_result',
@@ -796,7 +811,7 @@ function handleGetUser(clientId, data) {
   const client = clients.get(clientId)
   const { username } = data
   
-  if (!username || !usersData[username]) {
+  if (!username || !usersCache[username]) {
     send(client.ws, { type: 'get_user_result', success: false, message: '用户不存在' })
     return
   }
@@ -804,7 +819,7 @@ function handleGetUser(clientId, data) {
   send(client.ws, {
     type: 'get_user_result',
     success: true,
-    user: { ...usersData[username], password: undefined }
+    user: { ...usersCache[username], password: undefined }
   })
 }
 
@@ -813,9 +828,9 @@ function handleGetLeaderboard(clientId, data) {
   const client = clients.get(clientId)
   const { leaderboardType = 'chips', limit = 999 } = data
   
-  console.log('📊 获取排行榜:', leaderboardType, '用户数:', Object.keys(usersData).length)
+  console.log('📊 获取排行榜:', leaderboardType, '用户数:', Object.keys(usersCache).length)
   
-  const userList = Object.values(usersData)
+  const userList = Object.values(usersCache)
   
   let sorted
   switch (leaderboardType) {

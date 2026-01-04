@@ -4,7 +4,7 @@
  */
 import { createServer } from 'http'
 import { WebSocketServer } from 'ws'
-import { readFileSync, existsSync } from 'fs'
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs'
 import { join, extname } from 'path'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -25,10 +25,19 @@ const MIME_TYPES = {
   '.json': 'application/json',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.woff': 'font/woff',
   '.woff2': 'font/woff2'
+}
+
+// 头像上传目录
+const AVATARS_DIR = join(__dirname, 'dist', 'avatars')
+if (!existsSync(AVATARS_DIR)) {
+  mkdirSync(AVATARS_DIR, { recursive: true })
 }
 
 // 房间管理
@@ -73,6 +82,12 @@ async function startServer() {
     
     // 创建 HTTP 服务器（同时提供静态文件）
     const server = createServer((req, res) => {
+      // 处理头像上传
+      if (req.method === 'POST' && req.url === '/api/upload-avatar') {
+        handleAvatarUpload(req, res)
+        return
+      }
+      
       // 处理静态文件请求
       let filePath = req.url === '/' ? '/index.html' : req.url
       // 移除查询参数
@@ -173,6 +188,92 @@ setInterval(() => {
 // 启动服务器
 startServer()
 
+// 处理头像上传
+function handleAvatarUpload(req, res) {
+  const chunks = []
+  
+  req.on('data', chunk => chunks.push(chunk))
+  req.on('end', () => {
+    try {
+      const buffer = Buffer.concat(chunks)
+      const boundary = req.headers['content-type'].split('boundary=')[1]
+      
+      // 解析 multipart/form-data
+      const parts = parseMultipart(buffer, boundary)
+      const avatarPart = parts.find(p => p.name === 'avatar')
+      const usernamePart = parts.find(p => p.name === 'username')
+      
+      if (!avatarPart || !usernamePart) {
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: false, message: '缺少必要参数' }))
+        return
+      }
+      
+      const username = usernamePart.data.toString()
+      const ext = avatarPart.filename ? extname(avatarPart.filename) : '.jpg'
+      const filename = `${username}_${Date.now()}${ext}`
+      const filepath = join(AVATARS_DIR, filename)
+      
+      // 保存文件
+      writeFileSync(filepath, avatarPart.data)
+      
+      const avatarUrl = `/avatars/${filename}`
+      
+      // 更新用户数据
+      if (usersCache[username]) {
+        usersCache[username].avatarUrl = avatarUrl
+        saveUserData(username)
+      }
+      
+      console.log(`📷 头像上传成功: ${username} -> ${avatarUrl}`)
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ success: true, avatarUrl }))
+    } catch (e) {
+      console.error('头像上传失败:', e)
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ success: false, message: '上传失败' }))
+    }
+  })
+}
+
+// 解析 multipart/form-data
+function parseMultipart(buffer, boundary) {
+  const parts = []
+  const boundaryBuffer = Buffer.from(`--${boundary}`)
+  const endBoundary = Buffer.from(`--${boundary}--`)
+  
+  let start = buffer.indexOf(boundaryBuffer) + boundaryBuffer.length + 2
+  
+  while (start < buffer.length) {
+    const end = buffer.indexOf(boundaryBuffer, start)
+    if (end === -1) break
+    
+    const part = buffer.slice(start, end - 2)
+    const headerEnd = part.indexOf('\r\n\r\n')
+    
+    if (headerEnd !== -1) {
+      const headers = part.slice(0, headerEnd).toString()
+      const data = part.slice(headerEnd + 4)
+      
+      const nameMatch = headers.match(/name="([^"]+)"/)
+      const filenameMatch = headers.match(/filename="([^"]+)"/)
+      
+      if (nameMatch) {
+        parts.push({
+          name: nameMatch[1],
+          filename: filenameMatch ? filenameMatch[1] : null,
+          data
+        })
+      }
+    }
+    
+    start = end + boundaryBuffer.length + 2
+  }
+  
+  return parts
+}
+
 function handleMessage(clientId, data) {
   const handlers = {
     'create_room': () => handleCreateRoom(clientId, data),
@@ -190,7 +291,8 @@ function handleMessage(clientId, data) {
     'register': () => handleRegister(clientId, data),
     'login': () => handleLogin(clientId, data),
     'sign_in': () => handleSignIn(clientId, data),
-    'get_user': () => handleGetUser(clientId, data)
+    'get_user': () => handleGetUser(clientId, data),
+    'update_profile': () => handleUpdateProfile(clientId, data)
   }
   
   const handler = handlers[data.type]
@@ -1027,6 +1129,44 @@ async function handleGetUser(clientId, data) {
     } else {
       send(client.ws, { type: 'get_user_result', success: false, message: '获取用户数据失败' })
     }
+  }
+}
+
+// 更新用户资料
+async function handleUpdateProfile(clientId, data) {
+  const client = clients.get(clientId)
+  const { username, nickname, avatar, avatarUrl } = data
+  
+  if (!username) {
+    send(client.ws, { type: 'update_profile_result', success: false, message: '用户名不能为空' })
+    return
+  }
+  
+  try {
+    const user = await getUser(username)
+    if (!user) {
+      send(client.ws, { type: 'update_profile_result', success: false, message: '用户不存在' })
+      return
+    }
+    
+    // 更新资料
+    if (nickname !== undefined) user.nickname = nickname
+    if (avatar !== undefined) user.avatar = avatar
+    if (avatarUrl !== undefined) user.avatarUrl = avatarUrl
+    
+    await updateUser(username, user)
+    usersCache[username] = user
+    
+    send(client.ws, {
+      type: 'update_profile_result',
+      success: true,
+      user: { ...user, password: undefined }
+    })
+    
+    console.log(`✏️ 用户 ${username} 更新资料:`, { nickname, avatar, avatarUrl })
+  } catch (e) {
+    console.error('更新用户资料失败:', e)
+    send(client.ws, { type: 'update_profile_result', success: false, message: '更新失败' })
   }
 }
 

@@ -46,7 +46,7 @@
           <div v-if="winner.handType" class="winner-hand">{{ formatHandType(winner.handType) }}</div>
         </div>
         
-        <div v-else class="pot-display">
+        <div v-else class="pot-display" :class="potLevelClass">
           <span class="pot-label">💎 底池</span>
           <span class="pot-value">¥{{ displayPot }}</span>
           <div class="game-status-text">
@@ -76,10 +76,6 @@
           @click="handlePlayerClick(player, index)"
         >
           <template v-if="player">
-            <!-- 当前行动指示 -->
-            <div v-if="currentPlayerIndex === index && gamePhase === 'betting' && !player.folded" class="turn-indicator">
-              到你了
-            </div>
             
             <!-- 使用 PlayerComponent -->
             <PlayerComponent
@@ -152,18 +148,28 @@ export default {
   data() {
     return {
       displayPot: 0,
-      potAnimating: false
+      potAnimating: false,
+      maxPotReached: 0
     }
   },
   watch: {
     pot(newVal, oldVal) {
       if (newVal !== oldVal) {
-        this.animatePot(oldVal, newVal)
+        // 底池减少时（新一轮开始），直接重置
+        if (newVal < oldVal) {
+          this.displayPot = newVal
+          this.maxPotReached = newVal
+        } else {
+          // 底池增加时，更新最高值并动画
+          this.maxPotReached = Math.max(this.maxPotReached, newVal)
+          this.animatePot(oldVal, newVal)
+        }
       }
     }
   },
   mounted() {
     this.displayPot = this.pot
+    this.maxPotReached = this.pot
   },
   computed: {
     // 开牌预览的玩家
@@ -200,6 +206,16 @@ export default {
         }
       }
       return indices
+    },
+    // 底池等级样式 - 只根据本轮最高值显示，减少时不降级
+    potLevelClass() {
+      const p = this.maxPotReached
+      if (p >= 200) return 'pot-legendary'
+      if (p >= 120) return 'pot-epic'
+      if (p >= 80) return 'pot-rare'
+      if (p >= 50) return 'pot-high'
+      if (p >= 30) return 'pot-medium'
+      return ''
     }
   },
   methods: {
@@ -333,8 +349,8 @@ export default {
 }
 
 .winner-crown {
-  font-size: 36px;
-  margin-bottom: 6px;
+  font-size: 24px;
+  margin-bottom: 4px;
   animation: bounce 0.5s ease-out;
 }
 
@@ -345,7 +361,7 @@ export default {
 }
 
 .winner-hand {
-  font-size: 13px;
+  font-size: 10px;
   color: #7c2d12;
   margin-top: 6px;
   font-weight: 600;
@@ -604,7 +620,7 @@ export default {
   border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
-/* 开牌结果显示 - 左下角 */
+/* 开牌结果显示 - 左上角 */
 .game-table-wrapper {
   position: relative;
 }
@@ -612,7 +628,7 @@ export default {
 .showdown-result-corner {
   position: fixed !important;
   left: 12px !important;
-  bottom: 200px !important;
+  top: 100px !important;
   background: linear-gradient(145deg, rgba(139, 92, 246, 0.96) 0%, rgba(109, 40, 217, 0.94) 50%, rgba(91, 33, 182, 0.92) 100%) !important;
   border: 1px solid rgba(167, 139, 250, 0.5) !important;
   border-radius: 14px !important;
@@ -809,17 +825,17 @@ export default {
   position: absolute;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
   color: #1e293b;
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-size: 9px;
   font-weight: 500;
   white-space: nowrap;
-  max-width: 140px;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    0 2px 4px rgba(0, 0, 0, 0.1);
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(0, 0, 0, 0.08);
   animation: chatBubbleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 100;
@@ -1005,105 +1021,142 @@ export default {
 /* 操作气泡 - 醒目强调 */
 .action-bubble {
   position: absolute;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
   z-index: 200;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  box-shadow: 
+    0 2px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   /* 默认金色 */
   background: linear-gradient(135deg, #ffd700 0%, #f59e0b 100%);
   color: #1a1a1a;
-  border: 2px solid #b8860b;
+  border: 1px solid #b8860b;
+  letter-spacing: 0.3px;
 }
 
 /* 跟注/过牌 - 蓝色 */
 .action-bubble.call,
 .action-bubble.check {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(145deg, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%);
   color: #fff;
   border-color: #1e40af;
+  box-shadow: 
+    0 2px 10px rgba(59, 130, 246, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
 
 /* 加注 - 金色 */
 .action-bubble.raise,
 .action-bubble.blind {
-  background: linear-gradient(135deg, #ffd700 0%, #f59e0b 100%);
+  background: linear-gradient(145deg, #fde047 0%, #ffd700 50%, #f59e0b 100%);
   color: #1a1a1a;
   border-color: #b8860b;
+  box-shadow: 
+    0 2px 10px rgba(255, 215, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 /* ALL IN - 红金渐变 */
 .action-bubble.allin {
-  background: linear-gradient(135deg, #ef4444 0%, #ffd700 100%);
+  background: linear-gradient(145deg, #f87171 0%, #ef4444 40%, #ffd700 100%);
   color: #fff;
   border-color: #dc2626;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  box-shadow: 
+    0 2px 12px rgba(239, 68, 68, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: allinPulse 1.5s ease-in-out infinite;
 }
 
-/* 弃牌 - 灰色 */
+@keyframes allinPulse {
+  0%, 100% { box-shadow: 0 2px 12px rgba(239, 68, 68, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+  50% { box-shadow: 0 2px 18px rgba(239, 68, 68, 0.7), 0 0 12px rgba(255, 215, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+}
+
+/* 弃牌 - 深灰渐变 */
 .action-bubble.fold {
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  background: linear-gradient(145deg, #9ca3af 0%, #6b7280 50%, #4b5563 100%);
   color: #fff;
   border-color: #374151;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  opacity: 0.9;
 }
 
-/* 看牌 - 绿色 */
+/* 看牌 - 翠绿渐变 + 眼睛图标效果 */
 .action-bubble.peek {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  background: linear-gradient(145deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
   color: #fff;
   border-color: #15803d;
+  box-shadow: 
+    0 2px 12px rgba(34, 197, 94, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
 
-/* 开牌 - 紫色 */
+.action-bubble.peek::before {
+  content: '👁️ ';
+  font-size: 9px;
+}
+
+/* 开牌 - 紫色渐变 + 闪光效果 */
 .action-bubble.showdown {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  background: linear-gradient(145deg, #a78bfa 0%, #8b5cf6 50%, #6d28d9 100%);
   color: #fff;
   border-color: #5b21b6;
+  box-shadow: 
+    0 2px 14px rgba(139, 92, 246, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  animation: showdownGlow 2s ease-in-out infinite;
 }
 
-/* 底部玩家(0,1,2,3) - 操作气泡显示在上方 */
+.action-bubble.showdown::before {
+  content: '⚔️ ';
+  font-size: 9px;
+}
+
+@keyframes showdownGlow {
+  0%, 100% { box-shadow: 0 2px 14px rgba(139, 92, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+  50% { box-shadow: 0 2px 20px rgba(139, 92, 246, 0.7), 0 0 10px rgba(167, 139, 250, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+}
+
+/* 底部玩家(0,1,2,3) - 操作气泡显示在下方 */
 .seat-0 .action-bubble,
 .seat-1 .action-bubble,
 .seat-2 .action-bubble,
 .seat-3 .action-bubble {
-  top: -40px;
+  top: auto;
+  bottom: -32px;
   left: 50%;
   transform: translateX(-50%);
-  animation: actionPopUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: actionPopDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes actionPopUp {
-  0% { opacity: 0; transform: translateX(-50%) scale(0.3); }
-  60% { transform: translateX(-50%) scale(1.15); }
-  100% { opacity: 1; transform: translateX(-50%) scale(1); }
-}
-
-/* 右侧玩家(4,5) - 操作气泡显示在左边 */
+/* 右侧玩家(4,5) - 操作气泡显示在右边（玩家卡片外侧） */
 .seat-4 .action-bubble,
 .seat-5 .action-bubble {
-  top: 50%;
-  right: calc(100% + 10px);
-  left: auto;
-  transform: translateY(-50%);
-  animation: actionPopRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes actionPopRight {
-  0% { opacity: 0; transform: translateY(-50%) translateX(10px) scale(0.3); }
-  60% { transform: translateY(-50%) translateX(0) scale(1.15); }
-  100% { opacity: 1; transform: translateY(-50%) translateX(0) scale(1); }
-}
-
-/* 左侧玩家(6,7) - 操作气泡显示在右边 */
-.seat-6 .action-bubble,
-.seat-7 .action-bubble {
   top: 50%;
   left: calc(100% + 10px);
   right: auto;
   transform: translateY(-50%);
   animation: actionPopLeft 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 左侧玩家(6,7) - 操作气泡显示在左边（玩家卡片外侧） */
+.seat-6 .action-bubble,
+.seat-7 .action-bubble {
+  top: 50%;
+  right: calc(100% + 10px);
+  left: auto;
+  transform: translateY(-50%);
+  animation: actionPopRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes actionPopLeft {
@@ -1112,15 +1165,27 @@ export default {
   100% { opacity: 1; transform: translateY(-50%) translateX(0) scale(1); }
 }
 
+@keyframes actionPopRight {
+  0% { opacity: 0; transform: translateY(-50%) translateX(10px) scale(0.3); }
+  60% { transform: translateY(-50%) translateX(0) scale(1.15); }
+  100% { opacity: 1; transform: translateY(-50%) translateX(0) scale(1); }
+}
+
 /* ===== 居中布局（4人及以下）操作气泡位置调整 ===== */
-/* 座位5变成顶部 - 气泡显示在下方 */
+/* 座位5变成顶部 - 气泡显示在上方（玩家卡片外侧） */
 .players-area.centered-layout .seat-5 .action-bubble {
-  top: auto;
-  bottom: -40px;
+  top: -32px;
+  bottom: auto;
   left: 50%;
   right: auto;
   transform: translateX(-50%);
-  animation: actionPopDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: actionPopUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes actionPopUp {
+  0% { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.3); }
+  60% { transform: translateX(-50%) translateY(0) scale(1.15); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
 @keyframes actionPopDown {
@@ -1129,13 +1194,58 @@ export default {
   100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
-/* 座位2变成右侧 - 气泡显示在左边 */
+/* 座位2变成右侧 - 气泡显示在右边（玩家卡片外侧） */
 .players-area.centered-layout .seat-2 .action-bubble {
   top: 50%;
   bottom: auto;
-  left: auto;
-  right: calc(100% + 10px);
+  left: calc(100% + 10px);
+  right: auto;
   transform: translateY(-50%);
-  animation: actionPopRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: actionPopLeft 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ===== 移动端操作气泡位置调整 ===== */
+@media (max-width: 768px) {
+  /* 右侧玩家(4,5) - 移动端气泡显示在下方 */
+  .seat-4 .action-bubble,
+  .seat-5 .action-bubble {
+    top: auto;
+    bottom: -32px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    animation: actionPopDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* 左侧玩家(6,7) - 移动端气泡显示在下方 */
+  .seat-6 .action-bubble,
+  .seat-7 .action-bubble {
+    top: auto;
+    bottom: -32px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    animation: actionPopDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* 居中布局 - 座位2移动端气泡显示在下方 */
+  .players-area.centered-layout .seat-2 .action-bubble {
+    top: auto;
+    bottom: -32px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    animation: actionPopDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* 居中布局 - 座位6移动端气泡显示在下方 */
+  .players-area.centered-layout .seat-6 .action-bubble {
+    top: auto;
+    bottom: -32px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    animation: actionPopDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
 }
 </style>

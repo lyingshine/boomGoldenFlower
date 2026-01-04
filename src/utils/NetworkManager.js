@@ -378,6 +378,10 @@ export class NetworkManager {
         if (this.onGetUserResult) this.onGetUserResult(message)
         break
         
+      case 'update_profile_result':
+        if (this.onUpdateProfileResult) this.onUpdateProfileResult(message)
+        break
+        
       case 'chat_message':
         if (this.onChatMessage) this.onChatMessage(message)
         break
@@ -607,6 +611,24 @@ export class NetworkManager {
       setTimeout(() => {
         if (this.onGetUserResult) {
           this.onGetUserResult = null
+          resolve({ success: false, message: '请求超时' })
+        }
+      }, 5000)
+    })
+  }
+
+  // 更新用户资料
+  updateProfile(username, updates) {
+    return new Promise((resolve) => {
+      this.onUpdateProfileResult = (msg) => {
+        this.onUpdateProfileResult = null
+        resolve(msg)
+      }
+      this.send({ type: 'update_profile', username, ...updates })
+      
+      setTimeout(() => {
+        if (this.onUpdateProfileResult) {
+          this.onUpdateProfileResult = null
           resolve({ success: false, message: '请求超时' })
         }
       }, 5000)

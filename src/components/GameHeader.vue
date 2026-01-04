@@ -7,7 +7,8 @@
       
       <div class="header-center">
         <div class="user-info" @click.stop="toggleMenu">
-          <span class="user-avatar">😎</span>
+          <img v-if="userAvatarUrl" :src="userAvatarUrl" class="user-avatar-img" />
+          <span v-else class="user-avatar">{{ userAvatar }}</span>
           <span class="user-name">{{ displayName }}</span>
           <span class="user-chips">¥{{ displayChips }}</span>
           <span class="dropdown-arrow">{{ showMenu ? '▲' : '▼' }}</span>
@@ -63,7 +64,7 @@
       </div>
     </header>
     
-    <!-- 点击外部关闭菜单 - 放在最后 -->
+    <!-- 点击外部关闭菜单 -->
     <div v-if="showMenu || showRoomInfo" class="menu-overlay" @click="closeAllMenus"></div>
   </div>
 </template>
@@ -82,12 +83,19 @@ export default {
     }
   },
   computed: {
+    userAvatar() {
+      const user = this.userManager?.getCurrentUser()
+      return user?.avatar || '😎'
+    },
+    userAvatarUrl() {
+      const user = this.userManager?.getCurrentUser()
+      return user?.avatarUrl || null
+    },
     displayName() {
       const user = this.userManager?.getCurrentUser()
-      return user?.username || '玩家'
+      return user?.nickname || user?.username || '玩家'
     },
     displayChips() {
-      // 优先显示游戏中的实时筹码
       if (this.myPlayer && typeof this.myPlayer.chips === 'number') {
         return this.myPlayer.chips
       }
@@ -109,7 +117,9 @@ export default {
   methods: {
     toggleMenu() {
       this.showMenu = !this.showMenu
-      if (this.showMenu) this.showRoomInfo = false
+      if (this.showMenu) {
+        this.showRoomInfo = false
+      }
     },
     toggleRoomInfo() {
       this.showRoomInfo = !this.showRoomInfo
@@ -124,16 +134,6 @@ export default {
       this.showMenu = false
       this.showLobbyConfirm = false
       this.$emit('back-to-lobby', { manual: true })
-    },
-    handleBackToLobby() {
-      // 保留此方法以防其他地方调用
-      this.showLobbyConfirm = true
-    },
-    handleLogout() {
-      if (confirm('确定要退出登录吗？')) {
-        this.showMenu = false
-        this.$emit('logout', { manual: true })
-      }
     },
     async copyRoomCode() {
       try {
@@ -216,6 +216,13 @@ export default {
 
 .user-avatar {
   font-size: 16px;
+}
+
+.user-avatar-img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .user-name {
@@ -458,6 +465,11 @@ export default {
   
   .user-avatar {
     font-size: 14px;
+  }
+  
+  .user-avatar-img {
+    width: 18px;
+    height: 18px;
   }
   
   .user-name {

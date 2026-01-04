@@ -7,21 +7,82 @@
     </div>
     
     <div class="lobby-panel">
-      <!-- 顶部用户栏 - 更精致 -->
+      <!-- 顶部用户栏 - 点击进入资料 -->
       <div class="lobby-user-bar">
-        <div class="user-info-display">
+        <div class="user-info-display" @click="openProfilePanel">
           <div class="user-avatar-ring">
-            <span class="user-avatar-small">😎</span>
+            <img v-if="userAvatarUrl" :src="userAvatarUrl" class="user-avatar-img" />
+            <span v-else class="user-avatar-small">{{ userAvatar }}</span>
           </div>
           <div class="user-text">
-            <span class="user-name-small">{{ userManager?.getCurrentUser()?.username }}</span>
+            <span class="user-name-small">{{ displayName }}</span>
             <span class="user-chips-small">
               <span class="chip-icon">💰</span>
               ¥{{ formatChips(userManager?.getCurrentUser()?.chips || 1000) }}
             </span>
           </div>
+          <span class="profile-arrow">›</span>
         </div>
         <button @click="handleLogout" class="logout-btn-small">退出</button>
+      </div>
+
+      <!-- 资料面板 -->
+      <div v-if="showProfilePanel" class="profile-overlay" @click.self="showProfilePanel = false">
+        <div class="profile-panel">
+          <div class="profile-header">
+            <span>个人资料</span>
+            <button class="profile-close" @click="showProfilePanel = false">✕</button>
+          </div>
+          
+          <!-- 头像上传 -->
+          <div class="profile-avatar-section">
+            <div class="profile-avatar-preview" @click="triggerAvatarUpload">
+              <img v-if="previewAvatarUrl || userAvatarUrl" :src="previewAvatarUrl || userAvatarUrl" class="avatar-preview-img" />
+              <span v-else class="avatar-preview-emoji">{{ selectedAvatar }}</span>
+              <div class="avatar-upload-hint">点击上传</div>
+            </div>
+            <input type="file" ref="avatarInput" @change="handleAvatarUpload" accept="image/*" style="display:none" />
+          </div>
+          
+          <!-- 或选择表情头像 -->
+          <div class="emoji-avatar-section">
+            <div class="emoji-label">或选择表情</div>
+            <div class="avatar-picker">
+              <span v-for="emoji in avatarOptions" :key="emoji" 
+                    class="avatar-option" 
+                    :class="{ selected: selectedAvatar === emoji && !previewAvatarUrl }"
+                    @click="selectEmojiAvatar(emoji)">{{ emoji }}</span>
+            </div>
+          </div>
+          
+          <!-- 昵称 -->
+          <div class="profile-field">
+            <label>昵称</label>
+            <input v-model="newNickname" class="profile-input" placeholder="输入昵称" maxlength="8" />
+          </div>
+          
+          <!-- 战绩 -->
+          <div class="profile-stats">
+            <div class="stat-row">
+              <span class="stat-label">总局数</span>
+              <span class="stat-value">{{ stats.totalGames }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">胜局</span>
+              <span class="stat-value win">{{ stats.wins }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">胜率</span>
+              <span class="stat-value">{{ winRate }}%</span>
+            </div>
+          </div>
+          
+          <!-- 操作按钮 -->
+          <div class="profile-actions">
+            <button class="btn btn-secondary" @click="showProfilePanel = false">取消</button>
+            <button class="btn btn-primary" @click="saveProfile">保存</button>
+          </div>
+        </div>
       </div>
 
       <!-- 主标题区 - 高端感 -->
@@ -199,8 +260,8 @@
           <div v-for="(p, idx) in lobbyPlayers" :key="p.seatIndex" 
                class="lobby-player-card"
                :class="{ host: idx === 0 }">
-            <div class="lobby-player-avatar" :class="p.type">
-              {{ p.type === 'human' ? '🎮' : '🤖' }}
+            <div class="lobby-player-avatar">
+              {{ getPlayerEmoji(p, idx) }}
             </div>
             <div class="lobby-player-info">
               <div class="lobby-player-name">
@@ -255,7 +316,13 @@ export default {
       isCreating: false,
       copied: false,
       showSignInReward: false,
-      signInReward: 0
+      signInReward: 0,
+      showProfilePanel: false,
+      selectedAvatar: '😎',
+      newNickname: '',
+      previewAvatarUrl: null,
+      avatarFile: null,
+      avatarOptions: ['😎', '😊', '😄', '🙂', '😏', '🤔', '😌', '🧐', '😁', '🤨', '😤', '🙄', '😶', '🤩', '😇', '🥳']
     }
   },
   computed: {
@@ -267,9 +334,38 @@ export default {
     myRank() { 
       const idx = this.leaderboardData.findIndex(u => u.username === this.currentUsername)
       return idx >= 0 ? idx + 1 : null
+    },
+    userAvatar() {
+      const user = this.userManager?.getCurrentUser()
+      return user?.avatar || '😎'
+    },
+    userAvatarUrl() {
+      const user = this.userManager?.getCurrentUser()
+      return user?.avatarUrl || null
+    },
+    displayName() {
+      const user = this.userManager?.getCurrentUser()
+      return user?.nickname || user?.username || '玩家'
+    },
+    stats() {
+      const user = this.userManager?.getCurrentUser()
+      return {
+        totalGames: user?.totalGames || 0,
+        wins: user?.wins || 0
+      }
+    },
+    winRate() {
+      if (this.stats.totalGames === 0) return 0
+      return Math.round((this.stats.wins / this.stats.totalGames) * 100)
     }
   },
   methods: {
+    getPlayerEmoji(player, idx) {
+      const user = this.userManager?.getCurrentUser()
+      if (user && player.name === user.username) return user.avatar || '😎'
+      const emojis = ['😊', '😄', '🙂', '😏', '🤔', '😌', '🧐', '😁', '🤨', '😤', '🙄', '😶']
+      return emojis[idx % emojis.length]
+    },
     formatChips(num) {
       if (num >= 10000) return (num / 10000).toFixed(1) + 'w'
       if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
@@ -279,6 +375,74 @@ export default {
       if (confirm('确定要退出登录吗？')) {
         this.$emit('logout')
       }
+    },
+    triggerAvatarUpload() {
+      this.$refs.avatarInput.click()
+    },
+    handleAvatarUpload(e) {
+      const file = e.target.files[0]
+      if (!file) return
+      if (file.size > 2 * 1024 * 1024) {
+        alert('图片大小不能超过2MB')
+        return
+      }
+      this.avatarFile = file
+      this.previewAvatarUrl = URL.createObjectURL(file)
+    },
+    selectEmojiAvatar(emoji) {
+      this.selectedAvatar = emoji
+      this.previewAvatarUrl = null
+      this.avatarFile = null
+    },
+    async saveProfile() {
+      let avatarUrl = this.userAvatarUrl
+      
+      // 如果有上传的头像文件，先上传
+      if (this.avatarFile) {
+        try {
+          const formData = new FormData()
+          formData.append('avatar', this.avatarFile)
+          formData.append('username', this.currentUsername)
+          
+          const response = await fetch('/api/upload-avatar', {
+            method: 'POST',
+            body: formData
+          })
+          const result = await response.json()
+          if (result.success) {
+            avatarUrl = result.avatarUrl
+          } else {
+            alert('头像上传失败: ' + result.message)
+            return
+          }
+        } catch (e) {
+          console.error('上传头像失败:', e)
+          alert('头像上传失败，请重试')
+          return
+        }
+      }
+      
+      const updates = {
+        avatar: this.previewAvatarUrl ? null : this.selectedAvatar,
+        avatarUrl: avatarUrl,
+        nickname: this.newNickname.trim() || undefined
+      }
+      
+      const result = await this.userManager.updateProfile(updates)
+      if (result.success) {
+        this.showProfilePanel = false
+        this.previewAvatarUrl = null
+        this.avatarFile = null
+        this.$emit('profile-updated')
+      }
+    },
+    openProfilePanel() {
+      const user = this.userManager?.getCurrentUser()
+      this.selectedAvatar = user?.avatar || '😎'
+      this.newNickname = user?.nickname || user?.username || ''
+      this.previewAvatarUrl = null
+      this.avatarFile = null
+      this.showProfilePanel = true
     },
     async handleSignIn() {
       if (!this.canSignIn) return
@@ -1140,19 +1304,10 @@ export default {
 .lobby-player-avatar {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ffd700, #b8860b);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  border: 2px solid rgba(139, 105, 20, 0.5);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.lobby-player-avatar.ai {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  border-color: rgba(29, 78, 216, 0.5);
+  font-size: 32px;
 }
 
 .lobby-player-info {
@@ -1208,5 +1363,262 @@ export default {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+}
+
+/* ===== 资料面板 ===== */
+.user-info-display {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-info-display:hover {
+  opacity: 0.85;
+}
+
+.profile-arrow {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: 8px;
+}
+
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+.profile-panel {
+  width: 90%;
+  max-width: 360px;
+  background: linear-gradient(165deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 20px;
+  padding: 24px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  font-size: 18px;
+  color: #ffd700;
+  font-weight: 700;
+}
+
+.profile-close {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.profile-avatar-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.profile-avatar-preview {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.05) 100%);
+  border: 3px solid rgba(255, 215, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.profile-avatar-preview:hover {
+  border-color: rgba(255, 215, 0, 0.7);
+}
+
+.profile-avatar-preview:hover .avatar-upload-hint {
+  opacity: 1;
+}
+
+.avatar-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-preview-emoji {
+  font-size: 48px;
+}
+
+.avatar-upload-hint {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 11px;
+  padding: 6px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.emoji-avatar-section {
+  margin-bottom: 20px;
+}
+
+.emoji-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.avatar-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.avatar-option {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.avatar-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.avatar-option.selected {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.2);
+}
+
+.profile-field {
+  margin-bottom: 20px;
+}
+
+.profile-field label {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 8px;
+}
+
+.profile-input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.profile-input:focus {
+  border-color: rgba(255, 215, 0, 0.5);
+}
+
+.profile-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.profile-stats {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row .stat-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.stat-row .stat-value {
+  font-size: 14px;
+  color: white;
+  font-weight: 600;
+}
+
+.stat-row .stat-value.win {
+  color: #4ade80;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.profile-actions .btn {
+  flex: 1;
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.btn-secondary {
+  background: rgba(107, 114, 128, 0.3);
+  border: 1px solid rgba(107, 114, 128, 0.4);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.btn-secondary:hover {
+  background: rgba(107, 114, 128, 0.4);
 }
 </style>

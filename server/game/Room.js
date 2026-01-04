@@ -220,8 +220,76 @@ export class Room {
     const seatIndex = this.findEmptySeat()
     if (seatIndex === -1) return null
 
+    // 随机生成网名
+    const generateNickname = () => {
+      const patterns = [
+        // 形容词+名词
+        () => {
+          const adj = ['快乐的', '忧伤的', '沉默的', '暴躁的', '温柔的', '冷酷的', '迷茫的', '孤独的', '疯狂的', '淡定的', '神秘的', '可爱的'][Math.floor(Math.random() * 12)]
+          const noun = ['小猫咪', '大灰狼', '小白兔', '老司机', '路人甲', '打工仔', '咸鱼', '柠檬', '西瓜', '土豆', '仙人掌', '向日葵'][Math.floor(Math.random() * 12)]
+          return adj + noun
+        },
+        // xx不xx
+        () => {
+          const words = ['信', '服', '行', '懂', '爱', '想', '要', '管', '问', '说'][Math.floor(Math.random() * 10)]
+          return `不${words}就不${words}`
+        },
+        // 我是xxx
+        () => {
+          const who = ['谁', '你爸爸', '传奇', '菜鸟', '大佬', '萌新', '老玩家', '路人'][Math.floor(Math.random() * 8)]
+          return `我是${who}`
+        },
+        // xxx的xxx
+        () => {
+          const a = ['隔壁', '楼下', '村口', '网吧', '街角', '深夜'][Math.floor(Math.random() * 6)]
+          const b = ['老王', '小张', '阿强', '大哥', '少年', '青年'][Math.floor(Math.random() * 6)]
+          return `${a}${b}`
+        },
+        // 纯随机词组
+        () => {
+          const words = ['夜', '风', '雨', '云', '星', '月', '梦', '心', '影', '光', '雪', '花', '海', '天', '山'][Math.floor(Math.random() * 15)]
+          const words2 = ['落', '飞', '舞', '醉', '眠', '归', '逝', '念', '忆', '寻', '望', '听', '随', '伴', '守'][Math.floor(Math.random() * 15)]
+          return `${words}${words2}${['人', '客', '者', '生', '梦'][Math.floor(Math.random() * 5)]}`
+        },
+        // 带数字
+        () => {
+          const prefix = ['牛逼', '厉害', '无敌', '最强', '第一', '超级', '王者', '青铜'][Math.floor(Math.random() * 8)]
+          const num = Math.floor(Math.random() * 999) + 1
+          return `${prefix}${num}`
+        },
+        // 英文混搭
+        () => {
+          const en = ['King', 'Pro', 'God', 'Cool', 'Nice', 'Big', 'Top', 'VIP'][Math.floor(Math.random() * 8)]
+          const cn = ['哥', '姐', '弟', '妹', '爷', '王', '神', '帝'][Math.floor(Math.random() * 8)]
+          return `${en}${cn}`
+        },
+        // 简单两字
+        () => {
+          const names = ['阿杰', '小鱼', '大壮', '老K', '飞哥', '豆豆', '皮皮', '球球', '蛋蛋', '牛牛', '乐乐', '天天'][Math.floor(Math.random() * 12)]
+          return names
+        }
+      ]
+      return patterns[Math.floor(Math.random() * patterns.length)]()
+    }
+    
+    // 生成一个未使用的昵称
+    const usedNames = new Set()
+    for (const seat of this.game.seats) {
+      if (seat) usedNames.add(seat.name)
+    }
+    
+    let aiName
+    let attempts = 0
+    do {
+      aiName = generateNickname()
+      attempts++
+    } while (usedNames.has(aiName) && attempts < 20)
+    
+    if (usedNames.has(aiName)) {
+      aiName = `玩家${Math.floor(Math.random() * 9000) + 1000}`
+    }
+    
     this.aiCounter++
-    const aiName = `AI-${this.aiCounter}`
     this.game.addPlayer(seatIndex, aiName, 3000, 'ai')
     
     return { seatIndex, name: aiName }

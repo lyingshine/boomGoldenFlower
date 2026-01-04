@@ -441,14 +441,10 @@
 .lobby-player-avatar {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ffd700, #b8860b);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  border: 2px solid rgba(139, 105, 20, 0.5);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 32px;
 }
 
 .lobby-player-info {
@@ -754,23 +750,9 @@
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
 }
 
-/* 牌桌纹理 - 使用单独元素 */
+/* 牌桌纹理 - 已禁用 */
 .new-game-table .table-texture {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: var(--radius-full);
-  background: 
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 0, 0, 0.02) 2px,
-      rgba(0, 0, 0, 0.02) 4px
-    );
-  pointer-events: none;
+  display: none;
 }
 
 /* 玩家位置刻度线 - 已隐藏 */
@@ -861,37 +843,38 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* 获胜信息样式 */
+/* 获胜信息样式 - 简洁高级 */
 .pot-display.winner-info {
-  background: linear-gradient(145deg, rgba(255, 215, 0, 0.95) 0%, rgba(255, 237, 78, 0.92) 50%, rgba(184, 134, 11, 0.9) 100%);
-  border: 2px solid #8b6914;
-  padding: 12px 16px;
-  width: 160px;
-  animation: winnerPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 
-    0 8px 24px rgba(0, 0, 0, 0.5),
-    0 0 40px rgba(255, 215, 0, 0.4),
-    inset 0 2px 0 rgba(255, 255, 255, 0.3);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  padding: 8px 12px;
+  width: 100px;
+  animation: winnerFadeIn 0.4s ease-out;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
-@keyframes winnerPop {
-  0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
-  60% { transform: translate(-50%, -50%) scale(1.08); }
-  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+@keyframes winnerFadeIn {
+  0% { opacity: 0; transform: translate(-50%, -50%) translateY(10px); }
+  100% { opacity: 1; transform: translate(-50%, -50%) translateY(0); }
+}
+
+.winner-crown {
+  font-size: 18px;
+  margin-bottom: 4px;
 }
 
 .winner-text {
-  font-size: 17px;
-  font-weight: bold;
-  color: #1a202c;
-  margin-bottom: 4px;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd700;
+  margin-bottom: 3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .winner-amount {
-  font-size: 14px;
-  color: #16a34a;
-  font-weight: bold;
+  font-size: 12px;
+  color: #4ade80;
+  font-weight: 700;
   font-family: 'Courier New', monospace;
 }
 
@@ -911,10 +894,48 @@
   font-weight: 800;
   color: #ffd700;
   font-family: 'Courier New', monospace;
-  text-shadow: 
-    0 2px 6px rgba(0, 0, 0, 0.9),
-    0 0 20px rgba(255, 215, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   margin-bottom: 6px;
+  transition: color 0.3s ease, font-size 0.3s ease;
+}
+
+/* 底池等级样式 - 简洁高级感 */
+/* 中等底池 ¥30+ */
+.pot-display.pot-medium .pot-value {
+  color: #86efac;
+}
+
+/* 较高底池 ¥50+ */
+.pot-display.pot-high .pot-value {
+  color: #67e8f9;
+  font-size: 22px;
+}
+
+/* 稀有底池 ¥80+ */
+.pot-display.pot-rare {
+  border-color: rgba(192, 132, 252, 0.5);
+}
+.pot-display.pot-rare .pot-value {
+  color: #c4b5fd;
+  font-size: 23px;
+}
+
+/* 史诗底池 ¥120+ */
+.pot-display.pot-epic {
+  border-color: rgba(251, 146, 60, 0.5);
+}
+.pot-display.pot-epic .pot-value {
+  color: #fdba74;
+  font-size: 24px;
+}
+
+/* 传说底池 ¥200+ */
+.pot-display.pot-legendary {
+  border-color: rgba(248, 113, 113, 0.6);
+}
+.pot-display.pot-legendary .pot-value {
+  color: #fca5a5;
+  font-size: 26px;
 }
 
 .game-status-text {
@@ -994,117 +1015,134 @@
 /* 使用最简单的绝对定位，不使用transform */
 
 /* 玩家位置 - 8个座位：下边4个，左右各2个 */
+/* 玩家卡片距离牌桌边缘统一20px */
 
 /* 座位0：底部最左 */
 .player-seat.seat-0 {
-  bottom: -165px;
+  bottom: -20px;
   left: calc(50% - 210px);
+  transform: translateY(100%);
 }
 
 .player-seat.seat-0 .player-cards {
   position: absolute;
-  bottom: 185px;
+  bottom: calc(100% + 30px);
   left: 50%;
   transform: translateX(-50%);
+  top: auto;
 }
 
 /* 座位1：底部左2 */
 .player-seat.seat-1 {
-  bottom: -165px;
+  bottom: -20px;
   left: calc(50% - 70px);
+  transform: translateY(100%);
 }
 
 .player-seat.seat-1 .player-cards {
   position: absolute;
-  bottom: 185px;
+  bottom: calc(100% + 30px);
   left: 50%;
   transform: translateX(-50%);
+  top: auto;
 }
 
 /* 座位2：底部右2 */
 .player-seat.seat-2 {
-  bottom: -165px;
+  bottom: -20px;
   left: calc(50% + 70px);
+  transform: translateY(100%);
 }
 
 .player-seat.seat-2 .player-cards {
   position: absolute;
-  bottom: 185px;
+  bottom: calc(100% + 30px);
   left: 50%;
   transform: translateX(-50%);
+  top: auto;
 }
 
 /* 座位3：底部最右 */
 .player-seat.seat-3 {
-  bottom: -165px;
+  bottom: -20px;
   left: calc(50% + 210px);
+  transform: translateY(100%);
 }
 
 .player-seat.seat-3 .player-cards {
   position: absolute;
-  bottom: 185px;
+  bottom: calc(100% + 30px);
   left: 50%;
   transform: translateX(-50%);
+  top: auto;
 }
 
 /* 座位4：右侧下 */
 .player-seat.seat-4 {
-  right: -115px;
+  right: -20px;
   top: calc(50% + 60px);
+  transform: translateX(100%);
   flex-direction: row;
 }
 
 .player-seat.seat-4 .player-cards {
   position: absolute;
-  right: 135px;
+  right: calc(100% + 30px);
   top: 50%;
   transform: translateY(-50%);
   flex-direction: column;
+  left: auto;
 }
 
 /* 座位5：右侧上 */
 .player-seat.seat-5 {
-  right: -115px;
+  right: -20px;
   top: calc(50% - 60px);
+  transform: translateX(100%);
   flex-direction: row;
 }
 
 .player-seat.seat-5 .player-cards {
   position: absolute;
-  right: 135px;
+  right: calc(100% + 30px);
   top: 50%;
   transform: translateY(-50%);
   flex-direction: column;
+  left: auto;
 }
 
 /* 座位6：左侧上 */
 .player-seat.seat-6 {
-  left: -115px;
+  left: -20px;
   top: calc(50% - 60px);
+  transform: translateX(-100%);
   flex-direction: row-reverse;
 }
 
 .player-seat.seat-6 .player-cards {
   position: absolute;
-  left: 135px;
+  left: calc(100% + 30px);
   top: 50%;
   transform: translateY(-50%);
   flex-direction: column;
+  right: auto;
 }
 
 /* 座位7：左侧下 */
 .player-seat.seat-7 {
-  left: -115px;
+  left: -20px;
   top: calc(50% + 60px);
+  transform: translateX(-100%);
   flex-direction: row-reverse;
 }
 
 .player-seat.seat-7 .player-cards {
   position: absolute;
-  left: 135px;
+  left: calc(100% + 30px);
   top: 50%;
   transform: translateY(-50%);
   flex-direction: column;
+  right: auto;
 }
 
 /* 隐藏多余的座位8-11 */
@@ -1120,66 +1158,69 @@
 
 /* 座位0：底部中间 */
 .players-area.centered-layout .player-seat.seat-0 {
-  bottom: -165px;
+  bottom: -20px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(100%);
 }
 
 .players-area.centered-layout .player-seat.seat-0 .player-cards {
   position: absolute;
-  bottom: 185px;
+  bottom: calc(100% + 30px);
   left: 50%;
   transform: translateX(-50%);
+  top: auto;
 }
 
 /* 座位5：顶部中间 */
 .players-area.centered-layout .player-seat.seat-5 {
   right: auto;
-  top: -165px;
+  top: -20px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(-100%);
   flex-direction: column;
 }
 
 .players-area.centered-layout .player-seat.seat-5 .player-cards {
   position: absolute;
   right: auto;
-  top: 185px;
+  top: calc(100% + 30px);
   left: 50%;
   transform: translateX(-50%);
   flex-direction: row;
+  bottom: auto;
 }
 
 /* 座位6：左侧中间 */
 .players-area.centered-layout .player-seat.seat-6 {
-  left: -115px;
+  left: -20px;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateX(-100%) translateY(-50%);
   flex-direction: row-reverse;
 }
 
 .players-area.centered-layout .player-seat.seat-6 .player-cards {
   position: absolute;
-  left: 135px;
+  left: calc(100% + 30px);
   top: 50%;
   transform: translateY(-50%);
   flex-direction: column;
+  right: auto;
 }
 
 /* 座位2：右侧中间 */
 .players-area.centered-layout .player-seat.seat-2 {
   bottom: auto;
-  right: -115px;
+  right: -20px;
   left: auto;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateX(100%) translateY(-50%);
   flex-direction: row;
 }
 
 .players-area.centered-layout .player-seat.seat-2 .player-cards {
   position: absolute;
   bottom: auto;
-  right: 135px;
+  right: calc(100% + 30px);
   left: auto;
   top: 50%;
   transform: translateY(-50%);
@@ -1311,19 +1352,6 @@
   text-align: center;
   z-index: 20;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-}
-
-.winner-text {
-  font-size: 20px;
-  font-weight: bold;
-  color: #2d3748;
-  margin-bottom: 12px;
-}
-
-.winner-amount {
-  font-size: 18px;
-  color: #16a34a;
-  font-weight: bold;
 }
 
 /* 加载显示 - 简洁版 */

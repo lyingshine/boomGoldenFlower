@@ -39,7 +39,10 @@ export default {
     },
     avatarEmoji() {
       if (this.isMe) return '😎'
-      return this.player.type === 'human' ? '🎮' : '🤖'
+      // AI也用人物表情，看起来像真人
+      const humanEmojis = ['😊', '😄', '🙂', '😏', '🤔', '😌', '🧐', '😁', '🤨', '😤', '🙄', '😶']
+      // 根据座位索引固定一个表情，保持一致性
+      return humanEmojis[this.seatIndex % humanEmojis.length]
     },
     avatarColorClass() {
       return 'avatar-color-' + (this.seatIndex % 6)
@@ -67,11 +70,11 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 10px 16px;
   background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
+  border-radius: 14px;
 }
 
 .main-info.active {
@@ -86,14 +89,13 @@ export default {
 /* 头像 */
 .player-avatar {
   position: relative;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  border: 2px solid;
+  font-size: 28px;
   cursor: pointer;
   transition: transform 0.2s;
 }
@@ -102,13 +104,12 @@ export default {
   transform: scale(1.1);
 }
 
-.avatar-color-0 { background: linear-gradient(135deg, #f472b6, #be185d); border-color: #9d174d; }
-.avatar-color-1 { background: linear-gradient(135deg, #60a5fa, #1d4ed8); border-color: #1e40af; }
-.avatar-color-2 { background: linear-gradient(135deg, #a78bfa, #6d28d9); border-color: #5b21b6; }
-.avatar-color-3 { background: linear-gradient(135deg, #fb923c, #c2410c); border-color: #9a3412; }
-.avatar-color-4 { background: linear-gradient(135deg, #4ade80, #15803d); border-color: #166534; }
-.avatar-color-5 { background: linear-gradient(135deg, #f87171, #b91c1c); border-color: #991b1b; }
-.my-avatar { background: linear-gradient(135deg, #22c55e, #15803d); border-color: #166534; }
+.avatar-color-0, .avatar-color-1, .avatar-color-2, 
+.avatar-color-3, .avatar-color-4, .avatar-color-5,
+.my-avatar {
+  background: none;
+  border: none;
+}
 
 /* 资产提示 */
 .chips-tooltip {
@@ -145,10 +146,10 @@ export default {
 
 /* 昵称 */
 .player-name {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
-  max-width: 70px;
+  max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -160,10 +161,10 @@ export default {
 }
 
 .status {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 3px 10px;
+  border-radius: 5px;
 }
 
 .status.blind {
@@ -194,14 +195,14 @@ export default {
 /* 移动端 */
 @media (max-width: 768px) {
   .main-info {
-    padding: 6px 10px;
-    gap: 3px;
+    padding: 8px 12px;
+    gap: 4px;
   }
   
   .player-avatar {
-    width: 28px;
-    height: 28px;
-    font-size: 14px;
+    width: 36px;
+    height: 36px;
+    font-size: 22px;
   }
   
   .chips-tooltip {
@@ -211,13 +212,13 @@ export default {
   }
   
   .player-name {
-    font-size: 9px;
-    max-width: 50px;
+    font-size: 11px;
+    max-width: 60px;
   }
   
   .status {
-    font-size: 8px;
-    padding: 2px 6px;
+    font-size: 9px;
+    padding: 2px 8px;
   }
   
   .bet-popup {

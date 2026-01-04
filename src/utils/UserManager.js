@@ -106,6 +106,31 @@ export class UserManager {
     }
   }
 
+  // 更新用户资料（头像、昵称）
+  async updateProfile(updates) {
+    if (!this.currentUser) {
+      return { success: false, message: '请先登录' }
+    }
+    
+    if (!this.networkManager) {
+      return { success: false, message: '网络未连接' }
+    }
+    
+    try {
+      await this.networkManager.connect()
+      const result = await this.networkManager.updateProfile(this.currentUser.username, updates)
+      
+      if (result.success && result.user) {
+        this.currentUser = result.user
+        this.saveCurrentUser()
+      }
+      
+      return result
+    } catch (e) {
+      return { success: false, message: '网络错误' }
+    }
+  }
+
   // 检查今天是否已签到
   canSignIn() {
     if (!this.currentUser) return false

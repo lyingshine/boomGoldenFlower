@@ -585,11 +585,8 @@ export class GameEngine {
     const handType = player.hand.getType()
     const strength = handType.weight
     
-    // 牌型分类
-    const isMonster = strength >= 9000  // 豹子、同花顺
-    const isStrong = strength >= 7000   // 同花、顺子
-    const isMedium = strength >= 5000   // 对子
-    const isWeak = strength < 5000      // 散牌
+    // 根据玩家数动态调整牌力评估
+    const { isMonster, isStrong, isMedium, isWeak } = this.evaluateHandStrength(strength, totalOpponents + 1)
     
     // 开牌决策
     if (activePlayers.length >= 1) {
@@ -820,6 +817,37 @@ export class GameEngine {
       isAggressive: profile.raiseCount / totalActions > 0.5,
       isTight: profile.foldCount / totalActions > 0.4,
       isLoose: profile.foldCount / totalActions < 0.2
+    }
+  }
+
+  // 根据玩家数动态评估牌力
+  evaluateHandStrength(strength, playerCount) {
+    // 2-3人局：对子就很有价值
+    if (playerCount <= 3) {
+      return {
+        isMonster: strength >= 7000,  // 同花顺、豹子
+        isStrong: strength >= 5000,   // 顺子、同花
+        isMedium: strength >= 3000,   // 对子
+        isWeak: strength < 3000       // 散牌
+      }
+    }
+    
+    // 4-5人局：需要顺子以上才稳
+    if (playerCount <= 5) {
+      return {
+        isMonster: strength >= 8000,  // 豹子
+        isStrong: strength >= 6000,   // 同花、同花顺
+        isMedium: strength >= 4000,   // 顺子、大对子
+        isWeak: strength < 4000       // 小对子、散牌
+      }
+    }
+    
+    // 6-8人局：同花以上才有优势
+    return {
+      isMonster: strength >= 9000,  // 豹子
+      isStrong: strength >= 7000,   // 同花顺
+      isMedium: strength >= 5000,   // 同花、顺子
+      isWeak: strength < 5000       // 对子、散牌
     }
   }
 

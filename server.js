@@ -518,6 +518,27 @@ function handlePlayerAction(clientId, data) {
     ...result
   })
   
+  // 发送操作消息（用专门的操作气泡）
+  const actionMessages = {
+    'call': `跟注 ¥${result.amount || amount}`,
+    'raise': `加注 ¥${result.amount || amount}`,
+    'fold': '弃牌',
+    'check': '过牌',
+    'allin': `ALL IN ¥${result.amount || amount}`,
+    'blind': `焖注 ¥${result.amount || amount}`,
+    'peek': '看牌',
+    'showdown': '开牌'
+  }
+  const actionMsg = actionMessages[result.action] || actionMessages[action]
+  if (actionMsg) {
+    room.broadcast({
+      type: 'action_message',
+      seatIndex: seatIndex,
+      message: actionMsg,
+      actionType: result.action || action
+    })
+  }
+  
   // 更新所有玩家的游戏状态
   room.broadcastGameState()
   
@@ -594,8 +615,8 @@ function processAITurn(room) {
   const humanPlayers = activePlayers.filter(p => p.type === 'human' && !p.folded)
   const onlyAI = humanPlayers.length === 0
   
-  // 只剩AI时稍微加快，但不要太快
-  const delay = onlyAI ? 600 : 800
+  // AI决策延迟：有人类玩家时更长，让玩家能看清
+  const delay = onlyAI ? 800 : 1500
   
   // 延迟执行AI决策
   setTimeout(async () => {
@@ -641,6 +662,27 @@ function processAITurn(room) {
         ...result,
         isAI: true
       })
+      
+      // 广播 AI 操作气泡
+      const actionMessages = {
+        'call': `跟注 ¥${result.amount || decision.amount}`,
+        'raise': `加注 ¥${result.amount || decision.amount}`,
+        'fold': '弃牌',
+        'check': '过牌',
+        'allin': `ALL IN ¥${result.amount || decision.amount}`,
+        'blind': `焖注 ¥${result.amount || decision.amount}`,
+        'peek': '看牌',
+        'showdown': '开牌'
+      }
+      const actionMsg = actionMessages[result.action] || actionMessages[decision.action]
+      if (actionMsg) {
+        room.broadcast({
+          type: 'action_message',
+          seatIndex: seatIndex,
+          message: actionMsg,
+          actionType: result.action || decision.action
+        })
+      }
       
       // 广播 AI 聊天消息
       if (chatMessage) {

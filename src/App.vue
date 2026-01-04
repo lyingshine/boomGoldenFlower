@@ -47,6 +47,7 @@
         :showdown-mode="showdownMode"
         :showdown-preview="showdownPreview"
         :chat-messages="chatMessages"
+        :action-messages="actionMessages"
         @card-click="onCardClick"
         @player-click="onPlayerClick"
       />
@@ -110,7 +111,8 @@ export default {
       showdownMode: false,
       showdownPreview: null,  // 开牌时展示对手手牌
       pendingShowdownTarget: null,  // 等待开牌结果的目标
-      chatMessages: []  // 聊天消息列表
+      chatMessages: [],  // 聊天消息列表
+      actionMessages: []  // 操作消息列表（下注等）
     }
   },
   computed: {
@@ -227,6 +229,7 @@ export default {
       nm.onActionResult = (result) => this.handleActionResult(result)
       nm.onActionFailed = (msg) => alert(msg)
       nm.onChatMessage = (msg) => this.handleChatMessage(msg)
+      nm.onActionMessage = (msg) => this.handleActionMessage(msg)
     },
     updateLobbyPlayers(players) {
       if (!players) return
@@ -453,27 +456,36 @@ export default {
     },
     handleChatMessage(msg) {
       const msgId = Date.now() + Math.random()
-      // 添加消息到列表
-      this.chatMessages.push({
+      // 先移除同一玩家的旧消息
+      this.chatMessages = this.chatMessages.filter(m => m.seatIndex !== msg.seatIndex)
+      // 添加新消息
+      this.chatMessages = [...this.chatMessages, {
         id: msgId,
         seatIndex: msg.seatIndex,
         playerName: msg.playerName,
         message: msg.message,
         isAI: msg.isAI
-      })
+      }]
       
-      // 同一玩家只保留最新消息
-      const seen = new Set()
-      this.chatMessages = this.chatMessages.filter(m => {
-        if (seen.has(m.seatIndex)) return false
-        seen.add(m.seatIndex)
-        return true
-      }).slice(-8)
-      
-      // 4 秒后移除该消息
       setTimeout(() => {
         this.chatMessages = this.chatMessages.filter(m => m.id !== msgId)
       }, 4000)
+    },
+    handleActionMessage(msg) {
+      const msgId = Date.now() + Math.random()
+      // 先移除同一玩家的旧操作
+      this.actionMessages = this.actionMessages.filter(m => m.seatIndex !== msg.seatIndex)
+      // 添加新操作
+      this.actionMessages = [...this.actionMessages, {
+        id: msgId,
+        seatIndex: msg.seatIndex,
+        message: msg.message,
+        actionType: msg.actionType
+      }]
+      
+      setTimeout(() => {
+        this.actionMessages = this.actionMessages.filter(m => m.id !== msgId)
+      }, 3000)
     }
   }
 }

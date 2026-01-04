@@ -102,31 +102,6 @@
   text-align: center;
 }
 
-.player-status {
-  font-size: var(--font-sm);
-  font-weight: var(--font-semibold);
-  margin-top: var(--space-1);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  text-align: center;
-}
-
-.player-status.folded {
-  background: var(--gradient-danger);
-  color: white;
-}
-
-.player-status.all-in {
-  background: var(--gradient-gold);
-  color: #2d3748;
-}
-
-.player-status.peeked {
-  background: var(--gradient-primary);
-  color: white;
-}
-
 /* 获胜者公告 - 简化版本 */
 .winner-announcement {
   position: absolute;

@@ -20,11 +20,6 @@
         <span class="vs">VS</span>
         <span>{{ showdownResult.targetName }}</span>
       </div>
-      <div class="showdown-hands">
-        <span>{{ showdownResult.challengerHand }}</span>
-        <span class="vs-small">-</span>
-        <span>{{ showdownResult.targetHand }}</span>
-      </div>
       <div class="showdown-winner">🏆 {{ showdownResult.winnerName }} 胜</div>
     </div>
 
@@ -64,88 +59,78 @@
         </div>
       </div>
 
-      <!-- 玩家座位 - 只显示有玩家的座位 -->
+      <!-- 玩家座位 -->
       <div class="players-area" :class="{ 'centered-layout': playerCount <= 4 }">
-      <div
-        v-for="(player, index) in allSeats"
-        :key="index"
-        v-show="player"
-        :class="['player-seat', `seat-${index}`, {
-          'active-player': player && currentPlayerIndex === index,
-          'folded-player': player && player.folded,
-          'human-player': player && index === mySeatIndex,
-          'winner-player': winner && player && player.name === winner.name,
-          'my-turn-glow': player && index === mySeatIndex && currentPlayerIndex === index && gamePhase === 'betting',
-          'showdown-target': showdownMode && player && index !== mySeatIndex && !player.folded
-        }]"
-        @click="handlePlayerClick(player, index)"
-      >
-        <template v-if="player">
-          <!-- 当前行动指示 -->
-          <div v-if="currentPlayerIndex === index && gamePhase === 'betting' && !player.folded" class="turn-indicator">
-            到你了
-          </div>
-          <div class="player-info">
-            <div class="player-header">
-              <div class="player-avatar" :class="['avatar-color-' + (index % 6), { 'my-avatar': index === mySeatIndex }]">
-                {{ index === mySeatIndex ? '😎' : (player.type === 'human' ? '🎮' : '🤖') }}
-              </div>
-              <div class="player-name">
-                {{ player.name }}
+        <div
+          v-for="(player, index) in allSeats"
+          :key="index"
+          v-show="player"
+          :class="['player-seat', `seat-${index}`, {
+            'active-player': player && currentPlayerIndex === index,
+            'folded-player': player && player.folded,
+            'human-player': player && index === mySeatIndex,
+            'winner-player': winner && player && player.name === winner.name,
+            'my-turn-glow': player && index === mySeatIndex && currentPlayerIndex === index && gamePhase === 'betting',
+            'showdown-target': showdownMode && player && index !== mySeatIndex && !player.folded
+          }]"
+          @click="handlePlayerClick(player, index)"
+        >
+          <template v-if="player">
+            <!-- 当前行动指示 -->
+            <div v-if="currentPlayerIndex === index && gamePhase === 'betting' && !player.folded" class="turn-indicator">
+              到你了
+            </div>
+            
+            <!-- 使用 PlayerComponent -->
+            <PlayerComponent
+              :player="player"
+              :seat-index="index"
+              :is-me="index === mySeatIndex"
+              :is-current-turn="currentPlayerIndex === index && gamePhase === 'betting'"
+            />
+            
+            <!-- 手牌 -->
+            <div class="player-cards" v-if="player.cardCount > 0 || (player.cards && player.cards.length)"
+                 :class="{ 
+                   'showdown-target-cards': isShowdownTarget(player, index),
+                   'showdown-revealed': player.folded && player.cards && player.cards.length > 0
+                 }"
+                 @click="handleCardsClick(player, index)">
+              <div
+                v-for="i in 3"
+                :key="i"
+                :class="['game-card', { 
+                  'card-back': !showCard(player, i - 1),
+                  'card-clickable': canClickCard(player),
+                  'card-deal-anim': gamePhase === 'dealing',
+                  'card-shake': isShowdownTarget(player, index)
+                }]"
+                :style="{ animationDelay: getCardDelay(index, i - 1) + 's' }"
+                @click.stop="handleCardClick(player)"
+              >
+                <span v-if="showCard(player, i - 1) && player.cards" v-html="formatCard(player.cards[i - 1])"></span>
               </div>
             </div>
-            <div class="player-chips">¥{{ player.chips }}</div>
-            <div v-if="!player.folded && gamePhase === 'betting'" class="player-mode">
-              <span v-if="player.hasPeeked" class="mode-tag peeked">已看牌</span>
-              <span v-else class="mode-tag blind">焖牌中</span>
-            </div>
-            <div v-if="!player.folded && (player.currentBet > 0 || player.lastBetAmount > 0)" class="player-bet-info">
-              <div v-if="player.currentBet > 0" class="player-bet">
-                本把: ¥{{ player.currentBet }}
-              </div>
-              <div v-if="player.lastBetAmount > 0 && gamePhase === 'betting'" class="player-bet round-bet">
-                本轮: ¥{{ player.lastBetAmount }}
-              </div>
-            </div>
-            <div v-if="player.folded" class="player-status folded">{{ player.lostShowdown ? '比牌输' : '已弃牌' }}</div>
-            <div v-else-if="player.isAllIn" class="player-status allin">ALL IN</div>
-          </div>
-          
-          <!-- 手牌 -->
-          <div class="player-cards" v-if="player.cardCount > 0 || (player.cards && player.cards.length)"
-               :class="{ 
-                 'showdown-target-cards': isShowdownTarget(player, index),
-                 'showdown-revealed': player.folded && player.cards && player.cards.length > 0
-               }"
-               @click="handleCardsClick(player, index)">
-            <div
-              v-for="i in 3"
-              :key="i"
-              :class="['game-card', { 
-                'card-back': !showCard(player, i - 1),
-                'card-clickable': canClickCard(player),
-                'card-deal-anim': gamePhase === 'dealing',
-                'card-shake': isShowdownTarget(player, index)
-              }]"
-              :style="{ animationDelay: getCardDelay(index, i - 1) + 's' }"
-              @click.stop="handleCardClick(player)"
-            >
-              <span v-if="showCard(player, i - 1) && player.cards" v-html="formatCard(player.cards[i - 1])"></span>
-            </div>
-          </div>
 
-          <!-- 下注动画筹码 -->
-          <div v-if="player.lastBetAmount > 0 && gamePhase === 'betting'" class="bet-chip-anim">
-            💰
-          </div>
-          
-          <!-- 聊天气泡 -->
-          <div v-if="getPlayerMessage(index)" class="chat-bubble">
-            {{ getPlayerMessage(index) }}
-          </div>
-        </template>
+            <!-- 下注动画筹码 -->
+            <div v-if="player.lastBetAmount > 0 && gamePhase === 'betting'" class="bet-chip-anim">
+              💰
+            </div>
+            
+            <!-- 聊天气泡 - 没有操作气泡时才显示 -->
+            <div v-if="chatMessages && chatMessages.find(m => m.seatIndex === index) && !(actionMessages && actionMessages.find(m => m.seatIndex === index))" class="chat-bubble">
+              {{ chatMessages.find(m => m.seatIndex === index).message }}
+            </div>
+            
+            <!-- 操作气泡 - 优先显示 -->
+            <div v-if="actionMessages && actionMessages.find(m => m.seatIndex === index)" 
+                 class="action-bubble" 
+                 :class="actionMessages.find(m => m.seatIndex === index).actionType">
+              {{ actionMessages.find(m => m.seatIndex === index).message }}
+            </div>
+          </template>
+        </div>
       </div>
-    </div>
 
     <!-- 加载状态 -->
     <div v-if="isLoading" class="loading-display">
@@ -157,9 +142,12 @@
 </template>
 
 <script>
+import PlayerComponent from './PlayerComponent.vue'
+
 export default {
   name: 'GameTable',
-  props: ['allSeats', 'currentPlayerIndex', 'pot', 'gamePhase', 'winner', 'gameStatus', 'mySeatIndex', 'isLoading', 'loadingText', 'showdownResult', 'showdownMode', 'showdownPreview', 'chatMessages'],
+  components: { PlayerComponent },
+  props: ['allSeats', 'currentPlayerIndex', 'pot', 'gamePhase', 'winner', 'gameStatus', 'mySeatIndex', 'isLoading', 'loadingText', 'showdownResult', 'showdownMode', 'showdownPreview', 'chatMessages', 'actionMessages'],
   emits: ['card-click', 'player-click'],
   data() {
     return {
@@ -316,6 +304,11 @@ export default {
       if (!this.chatMessages) return null
       const msg = this.chatMessages.find(m => m.seatIndex === seatIndex)
       return msg ? msg.message : null
+    },
+    getPlayerAction(seatIndex) {
+      if (!this.actionMessages) return null
+      const msg = this.actionMessages.find(m => m.seatIndex === seatIndex)
+      return msg ? { message: msg.message, type: msg.actionType } : null
     }
   }
 }
@@ -382,54 +375,6 @@ export default {
   font-weight: 600;
 }
 
-.player-mode {
-  margin-top: -4px;
-  margin-bottom: 1px;
-}
-
-.mode-tag {
-  font-size: 8px;
-  padding: 2px 6px;
-  border-radius: var(--radius-lg);
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  display: inline-block;
-  line-height: 1;
-}
-
-.mode-tag.peeked {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(37, 99, 235, 0.35) 100%);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.15);
-}
-
-.mode-tag.blind {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.35) 100%);
-  color: #fcd34d;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.15);
-}
-
-.peeked-badge {
-  font-size: 10px;
-  margin-left: 2px;
-}
-
-.blind-mark {
-  font-size: 9px;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
-  padding: 2px 4px;
-  border-radius: var(--radius-lg);
-  margin-left: 3px;
-}
-
-.my-avatar {
-  background: radial-gradient(ellipse at 30% 30%, #22c55e 0%, #16a34a 50%, #15803d 100%) !important;
-  border-color: #15803d !important;
-}
-
 /* 轮到我时头像发光 */
 .my-turn-glow .player-avatar {
   box-shadow: 
@@ -461,34 +406,6 @@ export default {
 @keyframes turnPulse {
   0%, 100% { transform: translateX(-50%) scale(1); }
   50% { transform: translateX(-50%) scale(1.05); }
-}
-
-.player-status {
-  font-size: 9px;
-  padding: 3px 8px;
-  border-radius: var(--radius-lg);
-  margin-top: 4px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
-
-.player-status.folded {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(220, 38, 38, 0.35) 100%);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.player-status.allin {
-  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #f59e0b 100%);
-  color: #1a202c;
-  border: 1px solid #b8860b;
-  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
-  animation: allinPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes allinPulse {
-  0%, 100% { box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4); }
-  50% { box-shadow: 0 2px 16px rgba(255, 215, 0, 0.7); }
 }
 
 .card-clickable {
@@ -1083,5 +1000,142 @@ export default {
     opacity: 1;
     transform: translateX(-50%) translateY(0) scale(1);
   }
+}
+
+/* 操作气泡 - 醒目强调 */
+.action-bubble {
+  position: absolute;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  z-index: 200;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  /* 默认金色 */
+  background: linear-gradient(135deg, #ffd700 0%, #f59e0b 100%);
+  color: #1a1a1a;
+  border: 2px solid #b8860b;
+}
+
+/* 跟注/过牌 - 蓝色 */
+.action-bubble.call,
+.action-bubble.check {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #fff;
+  border-color: #1e40af;
+}
+
+/* 加注 - 金色 */
+.action-bubble.raise,
+.action-bubble.blind {
+  background: linear-gradient(135deg, #ffd700 0%, #f59e0b 100%);
+  color: #1a1a1a;
+  border-color: #b8860b;
+}
+
+/* ALL IN - 红金渐变 */
+.action-bubble.allin {
+  background: linear-gradient(135deg, #ef4444 0%, #ffd700 100%);
+  color: #fff;
+  border-color: #dc2626;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* 弃牌 - 灰色 */
+.action-bubble.fold {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: #fff;
+  border-color: #374151;
+}
+
+/* 看牌 - 绿色 */
+.action-bubble.peek {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: #fff;
+  border-color: #15803d;
+}
+
+/* 开牌 - 紫色 */
+.action-bubble.showdown {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: #fff;
+  border-color: #5b21b6;
+}
+
+/* 底部玩家(0,1,2,3) - 操作气泡显示在上方 */
+.seat-0 .action-bubble,
+.seat-1 .action-bubble,
+.seat-2 .action-bubble,
+.seat-3 .action-bubble {
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: actionPopUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes actionPopUp {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.3); }
+  60% { transform: translateX(-50%) scale(1.15); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+/* 右侧玩家(4,5) - 操作气泡显示在左边 */
+.seat-4 .action-bubble,
+.seat-5 .action-bubble {
+  top: 50%;
+  right: calc(100% + 10px);
+  left: auto;
+  transform: translateY(-50%);
+  animation: actionPopRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes actionPopRight {
+  0% { opacity: 0; transform: translateY(-50%) translateX(10px) scale(0.3); }
+  60% { transform: translateY(-50%) translateX(0) scale(1.15); }
+  100% { opacity: 1; transform: translateY(-50%) translateX(0) scale(1); }
+}
+
+/* 左侧玩家(6,7) - 操作气泡显示在右边 */
+.seat-6 .action-bubble,
+.seat-7 .action-bubble {
+  top: 50%;
+  left: calc(100% + 10px);
+  right: auto;
+  transform: translateY(-50%);
+  animation: actionPopLeft 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes actionPopLeft {
+  0% { opacity: 0; transform: translateY(-50%) translateX(-10px) scale(0.3); }
+  60% { transform: translateY(-50%) translateX(0) scale(1.15); }
+  100% { opacity: 1; transform: translateY(-50%) translateX(0) scale(1); }
+}
+
+/* ===== 居中布局（4人及以下）操作气泡位置调整 ===== */
+/* 座位5变成顶部 - 气泡显示在下方 */
+.players-area.centered-layout .seat-5 .action-bubble {
+  top: auto;
+  bottom: -40px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  animation: actionPopDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes actionPopDown {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.3); }
+  60% { transform: translateX(-50%) translateY(0) scale(1.15); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+/* 座位2变成右侧 - 气泡显示在左边 */
+.players-area.centered-layout .seat-2 .action-bubble {
+  top: 50%;
+  bottom: auto;
+  left: auto;
+  right: calc(100% + 10px);
+  transform: translateY(-50%);
+  animation: actionPopRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 </style>

@@ -206,8 +206,8 @@
 @media (max-width: 1024px) {
   .new-game-table {
     width: 90vw;
-    max-width: 500px;
-    height: 450px;
+    max-width: 540px;
+    height: 480px;
     margin-top: 60px;
     margin-bottom: 140px;
     border-width: 8px;
@@ -235,24 +235,24 @@
   }
   
   .game-card {
-    width: 30px;
-    height: 42px;
-    font-size: 11px;
+    width: 36px;
+    height: 50px;
+    font-size: 13px;
   }
   
   .player-seat.human-player .game-card {
-    width: 42px;
-    height: 58px;
-    font-size: 15px;
+    width: 50px;
+    height: 70px;
+    font-size: 18px;
   }
   
   .pot-display {
-    width: 180px;
-    padding: 12px 16px;
+    width: 140px;
+    padding: 10px 12px;
   }
   
   .pot-value {
-    font-size: 22px;
+    font-size: 18px;
   }
   
   .btn {
@@ -321,9 +321,9 @@
   
   /* 牌桌 - 移动端专用布局 */
   .new-game-table {
-    width: 52vw;
-    max-width: 280px;
-    height: 340px;
+    width: 60vw;
+    max-width: 320px;
+    height: 380px;
     margin: calc(180px + env(safe-area-inset-top)) auto 30px auto;
     border-width: 5px;
     border-radius: var(--radius-full);
@@ -373,15 +373,15 @@
   
   /* 中央底池信息 */
   .pot-display {
-    width: 120px;
-    padding: 8px 10px;
+    width: 110px;
+    padding: 6px 8px;
     border-radius: var(--radius-xl);
   }
   
   /* 移动端结算界面缩小 */
   .pot-display.winner-info {
-    width: 110px;
-    padding: 6px 10px;
+    width: 100px;
+    padding: 5px 8px;
   }
   
   .pot-display.winner-info .winner-crown {
@@ -478,15 +478,15 @@
   
   /* 手牌 - 移动端 */
   .game-card {
-    width: 22px;
-    height: 32px;
-    font-size: 8px;
+    width: 26px;
+    height: 38px;
+    font-size: 10px;
     border-radius: var(--radius-base);
     border-width: 1px;
   }
   
   .game-card.card-back::before {
-    font-size: 9px;
+    font-size: 11px;
   }
   
   .game-card.card-back::after {
@@ -503,14 +503,14 @@
   
   /* 人类玩家的牌稍大 */
   .player-seat.human-player .game-card {
-    width: 30px;
-    height: 44px;
-    font-size: 12px;
+    width: 36px;
+    height: 52px;
+    font-size: 14px;
     border-width: 1px;
   }
   
   .player-seat.human-player .game-card.card-back::before {
-    font-size: 12px;
+    font-size: 14px;
   }
   
   .player-seat.human-player .game-card.card-back::after {
@@ -523,9 +523,9 @@
   /* 开牌阶段的牌 - 统一尺寸 */
   .new-game-table.showdown-phase .player-seat:not(.folded-player) .game-card,
   .new-game-table.showdown-phase .player-seat.human-player .game-card {
-    width: 36px !important;
-    height: 52px !important;
-    font-size: 13px !important;
+    width: 42px !important;
+    height: 60px !important;
+    font-size: 15px !important;
     border-width: 1px;
   }
   
@@ -1257,20 +1257,20 @@
 /* 小屏手机 */
 @media (max-width: 380px) {
   .new-game-table {
-    width: 85vw;
-    max-width: 300px;
-    height: 280px;
+    width: 88vw;
+    max-width: 320px;
+    height: 320px;
     margin-bottom: 170px;
     border-radius: var(--radius-full);
   }
   
   .pot-display {
-    width: 120px;
-    padding: 8px 10px;
+    width: 100px;
+    padding: 5px 8px;
   }
   
   .pot-value {
-    font-size: 16px;
+    font-size: 14px;
   }
   
   .player-info {
@@ -1296,15 +1296,15 @@
   }
   
   .game-card {
-    width: 18px;
-    height: 26px;
-    font-size: 7px;
+    width: 22px;
+    height: 32px;
+    font-size: 9px;
   }
   
   .player-seat.human-player .game-card {
-    width: 30px;
-    height: 42px;
-    font-size: 12px;
+    width: 34px;
+    height: 48px;
+    font-size: 13px;
   }
   
   /* 座位位置微调 */

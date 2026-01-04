@@ -1,6 +1,5 @@
 <template>
-  <div class="game-controls-wrapper" :class="{ 'my-turn': isMyTurn && gamePhase === 'betting' }">
-    <div class="game-controls">
+    <div class="game-controls" :class="{ 'my-turn': isMyTurn && gamePhase === 'betting' }">
       <!-- 等待阶段 -->
       <template v-if="gamePhase === 'waiting'">
         <button v-if="isHost" @click="$emit('start-game')" class="btn btn-primary btn-large">
@@ -14,66 +13,68 @@
 
       <!-- 下注阶段 -->
       <template v-if="gamePhase === 'betting' && myPlayer && !myPlayer.folded">
-        <!-- 第一行：看牌和弃牌 -->
-        <div class="controls-row secondary-row">
-          <button v-if="!myPlayer.hasPeeked" @click="$emit('peek')" class="btn btn-info btn-small">
-            👁️ 看牌
-          </button>
-          <!-- 滑动弃牌 -->
-          <div class="slide-fold-container" ref="slideContainer">
-            <div class="slide-track">
-              <span class="slide-hint">{{ slideProgress > 0.8 ? '松开弃牌' : '滑动弃牌 →' }}</span>
+        <!-- 圆形按钮：看牌（左下角）和弃牌（右下角） -->
+        <div class="corner-buttons">
+          <!-- 左侧按钮：看牌/已看牌 -->
+          <div class="left-button">
+            <button v-if="!myPlayer.hasPeeked" @click="$emit('peek')" class="btn-circle btn-peek">
+              看牌
+            </button>
+            <div v-else class="btn-circle btn-peek-disabled">
+              已看牌
             </div>
-            <div 
-              class="slide-thumb" 
-              :style="{ left: slideLeft + 'px' }"
-              @mousedown="startSlide"
-              @touchstart="startSlide"
-            >
-              🚫
-            </div>
-            <div class="slide-progress" :style="{ width: slideProgress * 100 + '%' }"></div>
+          </div>
+          <!-- 右侧按钮：弃牌 -->
+          <div class="right-button">
+            <button @click="$emit('fold')" class="btn-circle btn-fold">
+              弃牌
+            </button>
           </div>
         </div>
         
-        <!-- 第二行：跟注/焖牌（轮到我时显示） -->
-        <div v-if="isMyTurn" class="controls-row bet-row">
-          <!-- 跟注控制 -->
-          <div class="bet-inline">
-            <button class="adj-btn" @click="decreaseCall" :disabled="callBetAmount <= callAmount">−</button>
-            <button @click="$emit('call', callBetAmount)" :disabled="!canCall" class="btn btn-primary">
-              🤝 跟 ¥{{ callBetAmount }}
-            </button>
-            <button class="adj-btn" @click="increaseCall">+</button>
+        <!-- 底部区域：跟注/焖牌（轮到我时显示） -->
+        <div v-if="isMyTurn" class="bottom-controls">
+          <!-- 跟注和焖牌在同一行 -->
+          <div class="bet-row">
+            <!-- 跟注控制 -->
+            <div class="bet-inline">
+              <button class="adj-btn" @click="decreaseCall" :disabled="callBetAmount <= callAmount">−</button>
+              <button @click="$emit('call', callBetAmount)" :disabled="!canCall" class="btn btn-primary">
+                🤝 跟 ¥{{ callBetAmount }}
+              </button>
+              <button class="adj-btn" @click="increaseCall">+</button>
+            </div>
+            
+            <!-- 焖牌控制 -->
+            <div v-if="!myPlayer.hasPeeked" class="bet-inline">
+              <button class="adj-btn" @click="decreaseBlind" :disabled="blindBetAmount <= blindMinAmount">−</button>
+              <button @click="$emit('blind', blindBetAmount)" :disabled="!canBlind" class="btn btn-blind">
+                🙈 焖 ¥{{ blindBetAmount }}
+              </button>
+              <button class="adj-btn" @click="increaseBlind">+</button>
+            </div>
           </div>
           
-          <!-- 焖牌控制 -->
-          <div v-if="!myPlayer.hasPeeked" class="bet-inline">
-            <button class="adj-btn" @click="decreaseBlind" :disabled="blindBetAmount <= blindMinAmount">−</button>
-            <button @click="$emit('blind', blindBetAmount)" :disabled="!canBlind" class="btn btn-blind">
-              🙈 焖 ¥{{ blindBetAmount }}
+          <!-- 开牌按钮单独一行 -->
+          <div v-if="showdownTargets.length > 0" class="showdown-controls">
+            <button v-if="showdownTargets.length === 1" @click="$emit('showdown', showdownTargets[0].id)" :disabled="!firstRoundComplete" class="btn btn-showdown btn-small">
+              ⚔️ 开牌 ¥{{ showdownCost }}
             </button>
-            <button class="adj-btn" @click="increaseBlind">+</button>
+            <button v-else @click="enterShowdownMode" :disabled="!firstRoundComplete" :class="['btn', 'btn-showdown', 'btn-small', { 'showdown-mode-active': showdownMode }]">
+              {{ showdownMode ? '点击对手开牌' : '⚔️ 开牌' }} ¥{{ showdownCost }}
+            </button>
+            <button v-if="showdownMode" @click="cancelShowdownMode" class="btn btn-danger btn-small">
+              取消
+            </button>
           </div>
-        </div>
-
-        <!-- 第三行：开牌按钮（轮到我且有对手时显示） -->
-        <div v-if="isMyTurn && showdownTargets.length > 0" class="controls-row secondary-row">
-          <button v-if="showdownTargets.length === 1" @click="$emit('showdown', showdownTargets[0].id)" :disabled="!firstRoundComplete" class="btn btn-showdown btn-small">
-            ⚔️ 开牌 ¥{{ showdownCost }}
-          </button>
-          <button v-else @click="enterShowdownMode" :disabled="!firstRoundComplete" :class="['btn', 'btn-showdown', 'btn-small', { 'showdown-mode-active': showdownMode }]">
-            {{ showdownMode ? '点击对手开牌' : '⚔️ 开牌' }} ¥{{ showdownCost }}
-          </button>
-          <button v-if="showdownMode" @click="cancelShowdownMode" class="btn btn-danger btn-small">
-            取消
-          </button>
         </div>
         
         <!-- 不是我的回合 -->
-        <div v-if="!isMyTurn" class="waiting-message">
-          <span class="waiting-dot"></span>
-          等待其他玩家
+        <div v-if="!isMyTurn" class="wait-controls">
+          <div class="waiting-message">
+            <span class="waiting-dot"></span>
+            等待其他玩家
+          </div>
         </div>
       </template>
 
@@ -86,16 +87,17 @@
 
       <!-- 游戏结束 -->
       <template v-if="gamePhase === 'showdown' || gamePhase === 'ended'">
-        <button v-if="isHost" @click="$emit('start-game')" class="btn btn-primary btn-large">
-          🃏 再来一局
-        </button>
-        <div v-else class="waiting-message">
-          <span class="waiting-dot"></span>
-          等待房主发牌
+        <div class="end-controls">
+          <button v-if="isHost" @click="$emit('start-game')" class="btn btn-primary btn-large">
+            🃏 再来一局
+          </button>
+          <div v-else class="waiting-message">
+            <span class="waiting-dot"></span>
+            等待房主发牌
+          </div>
         </div>
       </template>
     </div>
-  </div>
 </template>
 
 <script>
@@ -107,11 +109,7 @@ export default {
     return {
       showdownMode: false,
       callBetAmount: 10,
-      blindBetAmount: 10,
-      slideLeft: 0,
-      slideProgress: 0,
-      isSliding: false,
-      slideStartX: 0
+      blindBetAmount: 10
     }
   },
   watch: {
@@ -132,37 +130,6 @@ export default {
     }
   },
   methods: {
-    startSlide(e) {
-      this.isSliding = true
-      this.slideStartX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX
-      document.addEventListener('mousemove', this.onSlide)
-      document.addEventListener('mouseup', this.endSlide)
-      document.addEventListener('touchmove', this.onSlide)
-      document.addEventListener('touchend', this.endSlide)
-    },
-    onSlide(e) {
-      if (!this.isSliding) return
-      const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX
-      const container = this.$refs.slideContainer
-      if (!container) return
-      const maxSlide = container.offsetWidth - 36
-      const delta = clientX - this.slideStartX
-      this.slideLeft = Math.max(0, Math.min(delta, maxSlide))
-      this.slideProgress = this.slideLeft / maxSlide
-    },
-    endSlide() {
-      this.isSliding = false
-      document.removeEventListener('mousemove', this.onSlide)
-      document.removeEventListener('mouseup', this.endSlide)
-      document.removeEventListener('touchmove', this.onSlide)
-      document.removeEventListener('touchend', this.endSlide)
-      
-      if (this.slideProgress > 0.8) {
-        this.$emit('fold')
-      }
-      this.slideLeft = 0
-      this.slideProgress = 0
-    },
     enterShowdownMode() {
       this.showdownMode = true
       this.$emit('showdown-mode-change', true)
@@ -198,43 +165,228 @@ export default {
 </script>
 
 <style scoped>
-.game-controls-wrapper.my-turn {
-  border-color: rgba(255, 215, 0, 0.6) !important;
-  border-width: 2px !important;
-  box-shadow: 
-    0 -4px 20px rgba(0, 0, 0, 0.3),
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 15px rgba(255, 215, 0, 0.5),
-    0 0 30px rgba(255, 215, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-  animation: myTurnGlow 2s ease-in-out infinite;
-}
-
-@keyframes myTurnGlow {
-  0%, 100% { 
-    box-shadow: 
-      0 -4px 20px rgba(0, 0, 0, 0.3),
-      0 8px 32px rgba(0, 0, 0, 0.5),
-      0 0 15px rgba(255, 215, 0, 0.5),
-      0 0 30px rgba(255, 215, 0, 0.25),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-  50% { 
-    box-shadow: 
-      0 -4px 20px rgba(0, 0, 0, 0.3),
-      0 8px 32px rgba(0, 0, 0, 0.5),
-      0 0 25px rgba(255, 215, 0, 0.7),
-      0 0 50px rgba(255, 215, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-}
-
 .game-controls {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
   align-items: center;
   width: 100%;
+  min-height: 120px;
+}
+
+.game-controls.my-turn {
+  animation: myTurnGlow 2s ease-in-out infinite;
+}
+
+/* 圆形按钮容器 */
+.corner-buttons {
+  position: absolute;
+  width: 100%;
+  height: 80px;
+  pointer-events: none;
+  top: 0;
+}
+
+/* 左右按钮容器 - 固定定位 */
+.left-button {
+  position: absolute;
+  bottom: 0;
+  left: 20px;
+  pointer-events: auto;
+}
+
+.right-button {
+  position: absolute;
+  bottom: 0;
+  right: 20px;
+  pointer-events: auto;
+}
+
+/* 圆形按钮样式 - 筹码质感 */
+.btn-circle {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 3px solid;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  position: relative;
+}
+
+.btn-circle::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  animation: rotate 3s linear infinite;
+}
+
+.btn-circle:hover::before {
+  opacity: 1;
+}
+
+.btn-circle::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), transparent 60%);
+  pointer-events: none;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.btn-circle:hover {
+  transform: translateY(-3px) scale(1.05);
+  filter: brightness(1.2);
+}
+
+.btn-circle:active {
+  transform: translateY(-1px) scale(0.98);
+  transition: all 0.1s ease;
+}
+
+/* 看牌按钮 - 神秘蓝光 */
+.btn-peek {
+  background: radial-gradient(circle at center, #1e40af 0%, #1e3a8a 50%, #0f172a 100%);
+  border-color: #3b82f6;
+  color: #e0f2fe;
+  box-shadow: 
+    0 0 20px rgba(59, 130, 246, 0.6),
+    0 4px 15px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-peek:hover {
+  background: radial-gradient(circle at center, #2563eb 0%, #1e40af 50%, #1e3a8a 100%);
+  border-color: #60a5fa;
+  box-shadow: 
+    0 0 30px rgba(59, 130, 246, 0.8),
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* 已看牌状态 - 暗淡效果 */
+.btn-peek-disabled {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #374151 0%, #1f2937 50%, #111827 100%);
+  color: rgba(255, 255, 255, 0.4);
+  border: 3px solid #4b5563;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  opacity: 0.7;
+}
+
+/* 弃牌按钮 - 危险红焰 */
+.btn-fold {
+  background: radial-gradient(circle at center, #dc2626 0%, #b91c1c 50%, #7f1d1d 100%);
+  border-color: #ef4444;
+  color: #fef2f2;
+  box-shadow: 
+    0 0 20px rgba(239, 68, 68, 0.6),
+    0 4px 15px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-fold:hover {
+  background: radial-gradient(circle at center, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+  border-color: #f87171;
+  box-shadow: 
+    0 0 30px rgba(239, 68, 68, 0.8),
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* 底部控制区域 */
+.bottom-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  padding: 20px;
+  background: linear-gradient(180deg, 
+    rgba(0, 0, 0, 0) 0%, 
+    rgba(0, 0, 0, 0.3) 30%, 
+    rgba(0, 0, 0, 0.6) 100%);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 140px;
+}
+
+/* 等待其他玩家 - 固定底部 */
+.wait-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  padding: 30px 20px;
+  background: linear-gradient(180deg, 
+    rgba(0, 0, 0, 0) 0%, 
+    rgba(0, 0, 0, 0.4) 100%);
+  backdrop-filter: blur(8px);
+}
+
+/* 游戏结束 - 固定底部 */
+.end-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  padding: 30px 20px;
+  background: linear-gradient(180deg, 
+    rgba(0, 0, 0, 0) 0%, 
+    rgba(0, 0, 0, 0.4) 100%);
+  backdrop-filter: blur(8px);
+}
+
+/* 跟注和焖牌同一行 */
+.bet-row {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 600px;
+}
+
+/* 开牌控制区域 */
+.showdown-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .controls-row {
@@ -245,99 +397,187 @@ export default {
   width: 100%;
 }
 
-.btn-large {
-  padding: 10px 20px;
-  font-size: 15px;
-  min-width: 110px;
-  border-radius: var(--radius-xl);
-  font-weight: 600;
+/* 主要按钮基础样式 - 筹码质感 */
+.btn {
+  border: 2px solid;
+  border-radius: 8px;
+  font-weight: 700;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+  font-family: inherit;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-.btn-showdown {
-  background: linear-gradient(145deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
-  color: white;
-  border-radius: 10px;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
 }
 
-.btn-showdown:hover:not(:disabled) {
-  background: linear-gradient(145deg, #a78bfa 0%, #8b5cf6 50%, #7c3aed 100%);
-  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
-  transform: translateY(-1px);
+.btn:hover::before {
+  left: 100%;
 }
 
-.btn-showdown:disabled {
-  background: linear-gradient(145deg, #6b7280 0%, #4b5563 50%, #374151 100%);
+.btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.15) saturate(1.2);
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.98);
+  transition: all 0.1s ease;
+}
+
+.btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  box-shadow: none;
+  transform: none;
+  filter: grayscale(0.5);
 }
 
-.btn-showdown.showdown-mode-active {
-  background: linear-gradient(145deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
-  animation: pulse 1s ease-in-out infinite;
-  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
+/* 跟注按钮 - 金色筹码 */
+.btn-primary {
+  background: radial-gradient(circle at center, #f59e0b 0%, #d97706 50%, #92400e 100%);
+  border-color: #fbbf24;
+  color: #fffbeb;
+  box-shadow: 
+    0 0 15px rgba(251, 191, 36, 0.5),
+    0 4px 15px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.03); }
+.btn-primary:hover:not(:disabled) {
+  background: radial-gradient(circle at center, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  border-color: #fcd34d;
+  box-shadow: 
+    0 0 25px rgba(251, 191, 36, 0.7),
+    0 6px 20px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
+/* 焖牌按钮 - 深红筹码 */
 .btn-blind {
-  background: linear-gradient(145deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
-  color: white;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  background: radial-gradient(circle at center, #b91c1c 0%, #991b1b 50%, #7f1d1d 100%);
+  border-color: #dc2626;
+  color: #fef2f2;
+  box-shadow: 
+    0 0 15px rgba(220, 38, 38, 0.5),
+    0 4px 15px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .btn-blind:hover:not(:disabled) {
-  background: linear-gradient(145deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
-  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
-  transform: translateY(-1px);
+  background: radial-gradient(circle at center, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
+  border-color: #ef4444;
+  box-shadow: 
+    0 0 25px rgba(220, 38, 38, 0.7),
+    0 6px 20px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-.bet-row {
-  gap: 8px;
+/* 开牌按钮 - 紫色筹码 */
+.btn-showdown {
+  background: radial-gradient(circle at center, #7c3aed 0%, #6d28d9 50%, #581c87 100%);
+  border-color: #8b5cf6;
+  color: #f3e8ff;
+  box-shadow: 
+    0 0 15px rgba(139, 92, 246, 0.5),
+    0 4px 15px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.bet-inline {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+.btn-showdown:hover:not(:disabled) {
+  background: radial-gradient(circle at center, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
+  border-color: #a78bfa;
+  box-shadow: 
+    0 0 25px rgba(139, 92, 246, 0.7),
+    0 6px 20px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
+.btn-showdown.showdown-mode-active {
+  background: radial-gradient(circle at center, #f59e0b 0%, #d97706 50%, #92400e 100%);
+  animation: chipPulse 1.5s ease-in-out infinite;
+  border-color: #fbbf24;
+}
+
+@keyframes chipPulse {
+  0%, 100% { 
+    box-shadow: 
+      0 0 15px rgba(251, 191, 36, 0.6),
+      0 4px 15px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  50% { 
+    box-shadow: 
+      0 0 30px rgba(251, 191, 36, 0.9),
+      0 6px 20px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    transform: scale(1.02);
+  }
+}
+
+/* 危险按钮 */
+.btn-danger {
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+  color: #fef2f2;
+  box-shadow: 
+    0 4px 16px rgba(185, 28, 28, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 
+    0 6px 20px rgba(185, 28, 28, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* 调节按钮 - 精致设计 */
 .adj-btn {
-  width: 44px;
-  height: 44px;
-  border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 22px;
-  font-weight: bold;
+  font-weight: 400;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+  position: relative;
 }
 
-.adj-btn:first-child {
-  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+.adj-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
-.adj-btn:last-child {
-  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+.adj-btn:hover:not(:disabled)::before {
+  opacity: 1;
 }
 
 .adj-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: white;
 }
 
 .adj-btn:active:not(:disabled) {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .adj-btn:disabled {
@@ -345,28 +585,87 @@ export default {
   cursor: not-allowed;
 }
 
+.adj-btn:first-child {
+  border-radius: 14px 0 0 14px;
+}
+
+.adj-btn:last-child {
+  border-radius: 0 14px 14px 0;
+}
+
+/* 按钮组合 */
+.bet-inline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+}
+
 .bet-inline .btn {
   border-radius: 0;
-  min-width: 90px;
-  padding: 10px 12px;
+  min-width: 180px;
+  padding: 20px 24px;
+  font-size: 18px;
+  font-weight: 700;
+  border-left: none;
+  border-right: none;
+}
+
+/* 尺寸变体 */
+.btn-large {
+  padding: 22px 32px;
+  font-size: 19px;
+  min-width: 180px;
+  border-radius: 16px;
+}
+
+/* 状态信息 - 优雅设计 */
+.waiting-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.8);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 400;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.waiting-dot {
+  width: 6px;
+  height: 6px;
+  background: #fbbf24;
+  border-radius: 50%;
+  animation: gentleBlink 2s ease-in-out infinite;
+}
+
+@keyframes gentleBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.folded-message {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  font-weight: 400;
+  padding: 12px 20px;
+  background: rgba(185, 28, 28, 0.15);
+  border-radius: 12px;
+  border: 1px solid rgba(185, 28, 28, 0.25);
+  backdrop-filter: blur(8px);
 }
 
 .btn-small {
-  padding: 8px 14px !important;
-  font-size: 13px !important;
-  border-radius: var(--radius-lg);
-  font-weight: 500;
-}
-
-.secondary-row {
-  gap: 8px;
-}
-
-.secondary-row .btn {
-  min-width: auto;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  padding: 18px 24px;
+  font-size: 17px;
+  border-radius: 12px;
+  min-width: 160px;
 }
 
 .waiting-message {
@@ -404,121 +703,93 @@ export default {
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-/* 滑动弃牌样式 */
-.slide-fold-container {
-  position: relative;
-  width: 120px;
-  height: 36px;
-  background: rgba(239, 68, 68, 0.2);
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  overflow: hidden;
-  user-select: none;
-  touch-action: none;
-}
-
-.slide-track {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.slide-hint {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
-  pointer-events: none;
-  white-space: nowrap;
-  padding-left: 28px;
-}
-
-.slide-thumb {
-  position: absolute;
-  left: 0;
-  top: 2px;
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(145deg, #ef4444 0%, #dc2626 100%);
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  cursor: grab;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
-  transition: box-shadow 0.2s;
-  z-index: 2;
-}
-
-.slide-thumb:active {
-  cursor: grabbing;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
-}
-
-.slide-progress {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  background: linear-gradient(90deg, rgba(239, 68, 68, 0.4) 0%, rgba(239, 68, 68, 0.6) 100%);
-  pointer-events: none;
-  z-index: 1;
-}
-
+/* 移动端适配 */
 @media (max-width: 768px) {
-  .controls-row {
-    width: 100%;
+  .btn-circle {
+    width: 55px;
+    height: 55px;
+    font-size: 10px;
   }
   
-  .controls-row .btn {
-    flex: 1;
-    min-width: 0;
+  .bottom-controls {
+    gap: 16px;
+    padding: 20px;
+    min-height: 140px;
   }
   
-  .btn-large {
-    padding: 12px 20px;
-    font-size: 14px;
+  .bet-row {
+    gap: 18px;
   }
   
   .bet-inline .btn {
-    min-width: 90px;
-    padding: 10px 12px;
-    font-size: 13px;
+    min-width: 180px;
+    padding: 22px 26px;
+    font-size: 18px;
+  }
+  
+  .btn-large {
+    padding: 24px 32px;
+    font-size: 19px;
+    min-width: 180px;
   }
   
   .adj-btn {
-    width: 32px;
-    height: 36px;
-    font-size: 18px;
+    width: 52px;
+    height: 52px;
+    font-size: 22px;
+  }
+  
+  .btn-small {
+    padding: 20px 26px;
+    font-size: 17px;
+    min-width: 160px;
   }
 }
 
 @media (max-width: 380px) {
   .game-controls {
     gap: 8px;
+    min-height: 100px;
   }
   
-  .controls-row {
-    gap: 8px;
+  .btn-circle {
+    width: 50px;
+    height: 50px;
+    font-size: 9px;
+  }
+  
+  .bottom-controls {
+    gap: 14px;
+    padding: 18px;
+    min-height: 130px;
+  }
+  
+  .bet-row {
+    gap: 14px;
   }
   
   .btn-large {
-    padding: 10px 16px;
-    font-size: 13px;
-    min-width: 100px;
+    padding: 22px 28px;
+    font-size: 17px;
+    min-width: 160px;
   }
   
   .bet-inline .btn {
-    min-width: 80px;
-    padding: 8px 10px;
-    font-size: 12px;
+    min-width: 160px;
+    padding: 20px 24px;
+    font-size: 16px;
   }
   
   .adj-btn {
-    width: 28px;
-    height: 32px;
-    font-size: 16px;
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+  
+  .btn-small {
+    padding: 18px 24px;
+    font-size: 15px;
+    min-width: 140px;
   }
 }
 </style>

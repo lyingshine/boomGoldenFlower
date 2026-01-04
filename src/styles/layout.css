@@ -692,9 +692,9 @@
 /* 全新牌桌设计 - 视觉焦点优化 */
 .new-game-table {
   position: relative;
-  width: 480px;
-  max-width: 92vw;
-  height: 290px;
+  width: 560px;
+  max-width: 94vw;
+  height: 340px;
   background: 
     radial-gradient(ellipse at center,
       #16a34a 0%,
@@ -839,17 +839,17 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 220px;
+  width: 160px;
   background: linear-gradient(180deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%);
   border: 1px solid rgba(255, 215, 0, 0.4);
-  border-radius: var(--radius-3xl);
-  padding: 20px 26px;
+  border-radius: var(--radius-2xl);
+  padding: 12px 16px;
   backdrop-filter: blur(16px);
   z-index: 15;
   text-align: center;
   box-shadow: 
-    0 12px 40px rgba(0, 0, 0, 0.5),
-    0 0 50px rgba(255, 215, 0, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(255, 215, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
@@ -865,12 +865,12 @@
 .pot-display.winner-info {
   background: linear-gradient(145deg, rgba(255, 215, 0, 0.95) 0%, rgba(255, 237, 78, 0.92) 50%, rgba(184, 134, 11, 0.9) 100%);
   border: 2px solid #8b6914;
-  padding: 16px 26px;
-  width: 210px;
+  padding: 12px 16px;
+  width: 160px;
   animation: winnerPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow: 
-    0 12px 40px rgba(0, 0, 0, 0.5),
-    0 0 60px rgba(255, 215, 0, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(255, 215, 0, 0.4),
     inset 0 2px 0 rgba(255, 255, 255, 0.3);
 }
 
@@ -897,31 +897,31 @@
 
 .pot-label {
   display: block;
-  font-size: 12px;
+  font-size: 10px;
   color: rgba(255, 215, 0, 0.9);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   font-weight: 600;
 }
 
 .pot-value {
   display: block;
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 800;
   color: #ffd700;
   font-family: 'Courier New', monospace;
   text-shadow: 
     0 2px 6px rgba(0, 0, 0, 0.9),
     0 0 20px rgba(255, 215, 0, 0.5);
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .game-status-text {
-  font-size: 12px;
+  font-size: 10px;
   color: rgba(255, 255, 255, 0.85);
   background: rgba(255, 255, 255, 0.1);
-  padding: 6px 12px;
+  padding: 4px 8px;
   border-radius: var(--radius-lg);
   text-align: center;
   font-weight: 500;
@@ -1186,100 +1186,6 @@
   flex-direction: column;
 }
 
-/* 玩家信息 - 清晰层次 */
-.player-info {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-2xl);
-  padding: 6px 8px;
-  text-align: center;
-  min-width: 90px;
-  box-shadow: 
-    0 4px 16px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(8px);
-}
-
-.player-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: center;
-  margin-bottom: 4px;
-}
-
-.player-seat.active-player .player-info {
-  border-color: rgba(255, 215, 0, 0.6);
-  box-shadow: 
-    0 0 25px rgba(255, 215, 0, 0.4),
-    0 6px 20px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(45, 55, 72, 0.98) 0%, rgba(26, 32, 44, 0.99) 100%);
-}
-
-.player-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ffd700, #ffed4e);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  border: 2px solid #8b6914;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s ease;
-  flex-shrink: 0;
-}
-
-.player-avatar:hover {
-  transform: scale(1.08);
-}
-
-.player-name {
-  font-size: 10px;
-  color: white;
-  font-weight: 600;
-  line-height: 1.2;
-  max-width: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-.player-chips {
-  font-size: 12px;
-  color: #4ade80;
-  font-family: 'Courier New', monospace;
-  margin-bottom: 0;
-  line-height: 1.1;
-  font-weight: 700;
-}
-
-.player-chips::before {
-  content: '💰 ';
-  font-size: 9px;
-}
-
-.player-bet {
-  font-size: 9px;
-  color: #ffd700;
-  background: rgba(255, 215, 0, 0.2);
-  padding: 2px 4px;
-  border-radius: var(--radius-lg);
-  line-height: 1.1;
-  margin-bottom: 0;
-}
-
-.peek-hint {
-  font-size: 8px;
-  color: #60a5fa;
-  margin-top: 2px;
-  line-height: 1.1;
-}
-
 /* 玩家手牌 - 放在牌桌上 */
 .player-cards {
   display: flex;
@@ -1290,14 +1196,14 @@
 }
 
 .game-card {
-  width: 36px;
-  height: 50px;
+  width: 42px;
+  height: 58px;
   border-radius: var(--radius-lg);
   border: 2px solid #ddd;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: bold;
   cursor: pointer;
   background: white;
@@ -1309,10 +1215,10 @@
 /* 人类玩家和开牌阶段的卡片放大 */
 .player-seat.human-player .game-card,
 .new-game-table.showdown-phase .player-seat:not(.folded-player) .game-card {
-  width: 52px;
-  height: 72px;
+  width: 60px;
+  height: 84px;
   border-radius: var(--radius-lg);
-  font-size: 18px;
+  font-size: 22px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
 }
 
@@ -1328,7 +1234,7 @@
 
 .game-card.card-back::before {
   content: '🂠';
-  font-size: 16px;
+  font-size: 20px;
   opacity: 0.9;
 }
 
@@ -1346,7 +1252,7 @@
 
 .player-seat.human-player .game-card.card-back::before,
 .new-game-table.showdown-phase .player-seat:not(.folded-player) .game-card.card-back::before {
-  font-size: 26px;
+  font-size: 32px;
 }
 
 /* 弃牌玩家的样式 */

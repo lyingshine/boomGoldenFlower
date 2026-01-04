@@ -12,9 +12,9 @@ export class NetworkManager {
     this.seatIndex = -1
     // 动态获取服务器地址，支持手机访问
     const host = window.location.hostname || 'localhost'
-    // 本地开发用动态地址，生产环境用固定服务器
+    // 本地开发用动态地址，生产环境通过 nginx 反向代理走 80 端口
     const isProduction = host !== 'localhost' && host !== '127.0.0.1'
-    this.serverUrl = isProduction ? 'ws://115.159.68.212:3001' : `ws://${host}:3001`
+    this.serverUrl = isProduction ? `ws://${host}/ws` : `ws://${host}:3001`
     
     // 回调函数
     this.onConnected = null

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zhajinhua-v1'
+const CACHE_NAME = 'zhajinhua-v2'
 const ASSETS = [
   '/',
   '/index.html',

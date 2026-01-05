@@ -404,9 +404,11 @@ export default {
           formData.append('avatar', this.avatarFile)
           formData.append('username', this.currentUsername)
           
-          // 生产环境使用 3001 端口，开发环境通过 vite 代理
-          const apiBase = window.location.port === '3000' ? '' : ':3001'
-          const apiUrl = `${window.location.protocol}//${window.location.hostname}${apiBase}/api/upload-avatar`
+          // 开发环境(3000端口)通过vite代理，生产环境直接请求3001端口
+          const isDev = window.location.port === '3000'
+          const apiUrl = isDev 
+            ? '/api/upload-avatar'
+            : `${window.location.protocol}//${window.location.hostname}:3001/api/upload-avatar`
           
           const response = await fetch(apiUrl, {
             method: 'POST',

@@ -2,7 +2,7 @@
 
 PROJECT_NAME="boomGoldenFlower"
 PROJECT_DIR="/home/$PROJECT_NAME"
-GIT_URL="https://github.com/lyingshine/boomGoldenFlower.git"
+GIT_URL="https://gitclone.com/github.com/lyingshine/boomGoldenFlower.git"
 WEB_ROOT="/opt/1panel/www/sites/115.159.68.212/index"  # 网站根目录，根据实际情况修改
 
 echo "=== 停止当前运行的服务器 ==="

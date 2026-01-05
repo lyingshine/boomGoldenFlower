@@ -83,7 +83,7 @@ async function startServer() {
     // 创建 HTTP 服务器（同时提供静态文件）
     const server = createServer((req, res) => {
       // 处理头像上传
-      if (req.method === 'POST' && req.url === '/api/upload-avatar') {
+      if (req.url === '/api/upload-avatar') {
         handleAvatarUpload(req, res)
         return
       }
@@ -190,6 +190,18 @@ startServer()
 
 // 处理头像上传
 function handleAvatarUpload(req, res) {
+  // 添加 CORS 头
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  
+  // 处理预检请求
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204)
+    res.end()
+    return
+  }
+  
   const chunks = []
   
   req.on('data', chunk => chunks.push(chunk))

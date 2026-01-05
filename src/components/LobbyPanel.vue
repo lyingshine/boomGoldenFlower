@@ -1,4 +1,4 @@
-<template>
+hnb gv<template>
   <div class="lobby-container">
     <!-- 氛围背景层 -->
     <div class="lobby-atmosphere">

@@ -9,7 +9,7 @@ import { join, extname } from 'path'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import { Room } from './server/game/Room.js'
-import { initDatabase, getAllUsers, getUser, createUser, updateUser } from './server/db/mysql.js'
+import { initDatabase, getAllUsers, getUser, createUser, updateUser, getAIStats, getAIDetail, getAIHandJudgmentStats, getAllPlayerProfiles, recordAIGame, recordAIHandJudgment, updateAIPlayerStrategy, getAIAllPlayerStrategies, getAllAIPlayerStrategies, recordShowdownForCalibration, getAllHandCalibrations, clearAllAIData } from './server/db/mysql.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -304,11 +304,272 @@ function handleMessage(clientId, data) {
     'login': () => handleLogin(clientId, data),
     'sign_in': () => handleSignIn(clientId, data),
     'get_user': () => handleGetUser(clientId, data),
-    'update_profile': () => handleUpdateProfile(clientId, data)
+    'update_profile': () => handleUpdateProfile(clientId, data),
+    'get_ai_profiles': () => handleGetAIProfiles(clientId),
+    'get_ai_detail': () => handleGetAIDetail(clientId, data),
+    'get_ai_strategies': () => handleGetAIStrategies(clientId, data),
+    'get_hand_calibrations': () => handleGetHandCalibrations(clientId),
+    'clear_ai_data': () => handleClearAIData(clientId),
+    'batch_test': () => handleBatchTest(clientId, data)
   }
   
   const handler = handlers[data.type]
   if (handler) handler()
+}
+
+// 获取 AI 监控数据
+async function handleGetAIProfiles(clientId) {
+  const client = clients.get(clientId)
+  
+  try {
+    // 获取所有玩家档案
+    const profiles = await getAllPlayerProfiles()
+    // 获取 AI 综合统计
+    const aiStats = await getAIStats()
+    // 获取牌力认知统计
+    const handJudgments = await getAIHandJudgmentStats()
+    // 获取牌力校准数据
+    const handCalibrations = await getAllHandCalibrations()
+    // 获取 AI 对玩家的策略
+    const playerStrategies = await getAllAIPlayerStrategies()
+    
+    send(client.ws, { 
+      type: 'ai_profiles', 
+      profiles,
+      aiStats,
+      handJudgments,
+      handCalibrations,
+      playerStrategies
+    })
+  } catch (e) {
+    console.error('获取 AI 数据失败:', e)
+    send(client.ws, { type: 'ai_profiles', profiles: [], aiStats: [], handJudgments: [], handCalibrations: [], playerStrategies: [] })
+  }
+}
+
+// 获取单个 AI 详细数据
+async function handleGetAIDetail(clientId, data) {
+  const client = clients.get(clientId)
+  const { aiName } = data
+  
+  try {
+    const detail = await getAIDetail(aiName)
+    const strategies = await getAIAllPlayerStrategies(aiName)
+    send(client.ws, { type: 'ai_detail', aiName, detail, strategies })
+  } catch (e) {
+    console.error('获取 AI 详情失败:', e)
+    send(client.ws, { type: 'ai_detail', aiName, detail: null, strategies: [] })
+  }
+}
+
+// 获取 AI 对玩家的策略
+async function handleGetAIStrategies(clientId, data) {
+  const client = clients.get(clientId)
+  const { aiName } = data
+  
+  try {
+    const strategies = aiName ? await getAIAllPlayerStrategies(aiName) : await getAllAIPlayerStrategies()
+    send(client.ws, { type: 'ai_strategies', aiName, strategies })
+  } catch (e) {
+    console.error('获取 AI 策略失败:', e)
+    send(client.ws, { type: 'ai_strategies', aiName, strategies: [] })
+  }
+}
+
+// 获取牌力校准数据
+async function handleGetHandCalibrations(clientId) {
+  const client = clients.get(clientId)
+  
+  try {
+    const calibrations = await getAllHandCalibrations()
+    send(client.ws, { type: 'hand_calibrations', calibrations })
+  } catch (e) {
+    console.error('获取牌力校准失败:', e)
+    send(client.ws, { type: 'hand_calibrations', calibrations: [] })
+  }
+}
+
+// 清除所有 AI 数据
+async function handleClearAIData(clientId) {
+  const client = clients.get(clientId)
+  
+  try {
+    await clearAllAIData()
+    send(client.ws, { type: 'clear_ai_data_result', success: true })
+  } catch (e) {
+    console.error('清除 AI 数据失败:', e)
+    send(client.ws, { type: 'clear_ai_data_result', success: false, message: e.message })
+  }
+}
+
+// 批量测试（数据不写入数据库，只统计结果）
+async function handleBatchTest(clientId, data) {
+  const client = clients.get(clientId)
+  const { rounds, players, aiList } = data
+  
+  if (!rounds || rounds < 1) {
+    send(client.ws, { type: 'batch_test_result', success: false, message: '无效的测试局数' })
+    return
+  }
+  
+  // 导入需要的模块
+  const { GameEngine } = await import('./server/game/GameEngine.js')
+  
+  // 统计结果
+  const stats = {}
+  const allParticipants = [
+    ...players.map(p => ({ name: p.name, type: 'simulated', behavior: p.behavior })),
+    ...aiList.map(name => ({ name, type: 'ai', behavior: null }))
+  ]
+  
+  allParticipants.forEach(p => {
+    stats[p.name] = { wins: 0, total: 0, type: p.type }
+  })
+  
+  console.log(`🧪 开始批量测试: ${rounds} 局, 参与者: ${allParticipants.map(p => p.name).join(', ')}`)
+  
+  // 模拟玩家决策
+  const simulatePlayerDecision = (player, behavior, game) => {
+    const callAmount = game.getCallAmountForPlayer(player)
+    const chipPressure = callAmount / player.chips
+    const hand = player.hand?.getType()
+    const handStrength = hand?.weight || 0
+    const canShowdown = game.state.firstRoundComplete
+    const activePlayers = game.getActivePlayers()
+    
+    // 根据行为类型决策
+    switch (behavior) {
+      case 'aggressive':
+        if (!player.hasPeeked && Math.random() < 0.5) return { action: 'peek' }
+        // 激进型会主动开牌
+        if (canShowdown && handStrength >= 5000 && activePlayers.length === 2) {
+          const target = activePlayers.find(p => p.id !== player.id)
+          if (target) return { action: 'showdown', amount: target.id }
+        }
+        if (Math.random() < 0.4 && player.chips > callAmount + 20) {
+          return { action: 'raise', amount: 20 + Math.floor(Math.random() * 30) }
+        }
+        // 弱牌也会弃牌
+        if (player.hasPeeked && handStrength < 3000 && chipPressure > 0.3 && Math.random() < 0.4) {
+          return { action: 'fold' }
+        }
+        return { action: 'call' }
+        
+      case 'tight':
+        if (!player.hasPeeked) return { action: 'peek' }
+        // 紧凑型弱牌容易弃牌
+        if (handStrength < 4000 && chipPressure > 0.15) {
+          return { action: 'fold' }
+        }
+        // 强牌会开牌
+        if (canShowdown && handStrength >= 6000 && activePlayers.length === 2) {
+          const target = activePlayers.find(p => p.id !== player.id)
+          if (target) return { action: 'showdown', amount: target.id }
+        }
+        return { action: 'call' }
+        
+      case 'passive':
+        if (!player.hasPeeked && Math.random() < 0.6) return { action: 'peek' }
+        // 被动型很少开牌，但弱牌会弃
+        if (player.hasPeeked && handStrength < 3500 && chipPressure > 0.25 && Math.random() < 0.5) {
+          return { action: 'fold' }
+        }
+        return { action: 'call' }
+        
+      case 'random':
+        if (!player.hasPeeked && Math.random() < 0.5) return { action: 'peek' }
+        const roll = Math.random()
+        if (roll < 0.15) return { action: 'fold' }
+        if (roll < 0.25 && player.chips > callAmount + 15) {
+          return { action: 'raise', amount: 15 }
+        }
+        if (roll < 0.35 && canShowdown && activePlayers.length === 2) {
+          const target = activePlayers.find(p => p.id !== player.id)
+          if (target) return { action: 'showdown', amount: target.id }
+        }
+        return { action: 'call' }
+        
+      default: // balanced
+        if (!player.hasPeeked && Math.random() < 0.5) return { action: 'peek' }
+        // 均衡型根据牌力决策
+        if (player.hasPeeked && handStrength < 3500 && chipPressure > 0.2 && Math.random() < 0.4) {
+          return { action: 'fold' }
+        }
+        if (canShowdown && handStrength >= 5500 && activePlayers.length === 2 && Math.random() < 0.5) {
+          const target = activePlayers.find(p => p.id !== player.id)
+          if (target) return { action: 'showdown', amount: target.id }
+        }
+        if (Math.random() < 0.15 && player.chips > callAmount + 15) {
+          return { action: 'raise', amount: 15 }
+        }
+        return { action: 'call' }
+    }
+  }
+  
+  // 运行测试
+  for (let round = 0; round < rounds; round++) {
+    const game = new GameEngine('TEST', null)
+    
+    // 添加参与者
+    allParticipants.forEach((p, idx) => {
+      game.addPlayer(idx, p.name, 1000, p.type === 'ai' ? 'ai' : 'human')
+    })
+    
+    // 开始游戏
+    game.startRound()
+    game.finishDealing()
+    
+    // 模拟对局
+    let maxActions = 100
+    while (game.state.phase === 'betting' && maxActions-- > 0) {
+      const currentIdx = game.state.currentPlayerIndex
+      const currentPlayer = game.seats[currentIdx]
+      if (!currentPlayer || currentPlayer.folded) break
+      
+      let decision
+      if (currentPlayer.type === 'ai') {
+        decision = await game.makeAIDecision(currentIdx)
+      } else {
+        const participant = allParticipants.find(p => p.name === currentPlayer.name)
+        decision = simulatePlayerDecision(currentPlayer, participant?.behavior || 'balanced', game)
+      }
+      
+      if (!decision) break
+      
+      const result = game.handleAction(currentIdx, decision.action, decision.amount)
+      if (!result.success) break
+      if (result.action === 'gameEnd') break
+    }
+    
+    // 统计结果
+    const winner = game.state.winner
+    if (winner) {
+      allParticipants.forEach(p => {
+        stats[p.name].total++
+        if (winner.name === p.name) {
+          stats[p.name].wins++
+        }
+      })
+    }
+    
+    // 发送进度
+    if (round % 10 === 0 || round === rounds - 1) {
+      const progress = Math.round((round + 1) / rounds * 100)
+      send(client.ws, { type: 'batch_test_progress', progress })
+    }
+  }
+  
+  // 生成结果
+  const results = Object.entries(stats).map(([name, s]) => ({
+    name,
+    type: s.type,
+    wins: s.wins,
+    total: s.total,
+    winRate: s.total > 0 ? Math.round(s.wins / s.total * 100) : 0
+  })).sort((a, b) => b.winRate - a.winRate)
+  
+  console.log(`✅ 批量测试完成:`, results)
+  send(client.ws, { type: 'batch_test_result', success: true, results })
 }
 
 // 创建房间
@@ -360,7 +621,8 @@ function handleJoinRoom(clientId, data) {
   client.roomCode = roomCode
   client.playerName = playerName
   
-  console.log(`👤 玩家加入: ${playerName} -> ${roomCode} (筹码: ${userChips})`)
+  const waitingMsg = result.waitingForNextRound ? ' (等待下一局)' : ''
+  console.log(`👤 玩家加入: ${playerName} -> ${roomCode} (筹码: ${userChips})${waitingMsg}`)
   
   // 通知加入者
   send(client.ws, {
@@ -369,7 +631,8 @@ function handleJoinRoom(clientId, data) {
     seatIndex: result.seatIndex,
     players: room.getPlayerList(),
     isHost: false,
-    gameStarted: room.gameStarted
+    gameStarted: room.gameStarted,
+    waitingForNextRound: result.waitingForNextRound
   })
   
   // 通知房间内其他玩家
@@ -377,7 +640,8 @@ function handleJoinRoom(clientId, data) {
     type: 'player_joined',
     playerName,
     seatIndex: result.seatIndex,
-    players: room.getPlayerList()
+    players: room.getPlayerList(),
+    waitingForNextRound: result.waitingForNextRound
   }, clientId)
   
   // 如果游戏已经开始（在牌桌中），同步游戏状态给新玩家
@@ -605,24 +869,133 @@ function handlePlayerAction(clientId, data) {
   // 记录玩家行为到档案（用于 AI 学习）
   const player = room.game.seats[seatIndex]
   if (player && player.type === 'human') {
-    const updates = { totalHands: 1 }
-    if (action === 'fold') updates.foldCount = 1
-    if (action === 'raise') updates.raiseCount = 1
-    if (action === 'call') updates.callCount = 1
-    if (action === 'blind') updates.blindBetCount = 1
-    if (action === 'peek') updates.peekRound = room.game.state.round
-    room.updatePlayerProfile(player.name, updates)
+    const updates = {}
+    const round = room.game.state.round || 1
+    
+    if (action === 'fold') {
+      updates.foldCount = 1
+      // 区分早期弃牌和晚期弃牌（基于本局是否完成第一轮下注）
+      if (!room.game.state.firstRoundComplete) {
+        updates.earlyFoldCount = 1
+      } else {
+        updates.lateFoldCount = 1
+      }
+    }
+    
+    if (action === 'raise') {
+      updates.raiseCount = 1
+      // 区分小加注和大加注
+      if (amount <= 20) {
+        updates.smallRaiseCount = 1
+      } else {
+        updates.bigRaiseCount = 1
+      }
+      // 记录下注金额
+      updates.betSize = amount
+    }
+    
+    if (action === 'call') {
+      updates.callCount = 1
+      if (result.amount) {
+        updates.betSize = result.amount
+      }
+    }
+    
+    if (action === 'blind') {
+      updates.blindBetCount = 1
+      updates.betSize = amount
+      // 焖牌加注也算加注
+      const callAmount = room.game.getCallAmountForPlayer(player)
+      if (amount > callAmount) {
+        updates.raiseCount = 1
+        if (amount - callAmount > 20) {
+          updates.bigRaiseCount = 1
+        } else {
+          updates.smallRaiseCount = 1
+        }
+      }
+    }
+    
+    if (action === 'peek') {
+      updates.peekRound = round
+    }
+    
+    if (action === 'showdown') {
+      updates.showdownInitiated = 1
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      room.updatePlayerProfile(player.name, updates)
+    }
   }
   
-  // 记录开牌结果
-  if (result.action === 'showdown') {
+  // 记录开牌结果（包括开牌后直接结束游戏的情况）
+  if (result.action === 'showdown' || (result.action === 'gameEnd' && result.challengerHand)) {
     const winner = room.game.seats[result.winnerSeatIndex]
     const loser = room.game.seats[result.loserSeatIndex]
+    const target = room.game.seats[result.targetSeatIndex]
+    
+    // 被开牌的玩家
+    if (target && target.type === 'human') {
+      room.updatePlayerProfile(target.name, { showdownReceived: 1 })
+    }
+    
     if (winner && winner.type === 'human') {
       room.updatePlayerProfile(winner.name, { showdownWins: 1 })
     }
     if (loser && loser.type === 'human') {
       room.updatePlayerProfile(loser.name, { showdownLosses: 1 })
+      
+      // 检测诈唬被抓
+      const loserHand = result.loserSeatIndex === seatIndex ? result.challengerHand : result.targetHand
+      console.log(`🔍 诈唬检测: loser=${loser.name}, loserHand=`, loserHand, `currentBet=${loser.currentBet}`)
+      
+      if (loserHand) {
+        const isWeakHand = loserHand.weight < 3500
+        const totalBet = loser.currentBet || 0
+        console.log(`🔍 isWeakHand=${isWeakHand}(${loserHand.weight}), totalBet=${totalBet}`)
+        
+        if (isWeakHand && totalBet > 30) {
+          room.updatePlayerProfile(loser.name, { bluffCaught: 1 })
+          console.log(`🎭 诈唬被抓: ${loser.name}`)
+        }
+      } else {
+        console.log(`⚠️ loserHand 为空`)
+      }
+    } else {
+      console.log(`⚠️ loser检测跳过: loser=${loser?.name}, type=${loser?.type}`)
+    }
+    
+    // 记录牌力校准数据
+    const challengerHand = result.challengerHand
+    const targetHand = result.targetHand
+    console.log(`🎴 校准数据检查: challengerHand=`, challengerHand, `targetHand=`, targetHand)
+    if (challengerHand && targetHand) {
+      const challengerWon = result.winnerSeatIndex === seatIndex
+      console.log(`📝 记录校准: ${challengerHand.type}(${challengerHand.weight}) vs ${targetHand.type}(${targetHand.weight}), 挑战者胜=${challengerWon}`)
+      recordShowdownForCalibration(challengerHand.type, challengerHand.weight, challengerWon, targetHand.weight)
+        .then(() => console.log(`✅ 校准记录成功: ${challengerHand.type}`))
+        .catch(e => console.error('记录牌力校准失败:', e.message))
+      recordShowdownForCalibration(targetHand.type, targetHand.weight, !challengerWon, challengerHand.weight)
+        .then(() => console.log(`✅ 校准记录成功: ${targetHand.type}`))
+        .catch(e => console.error('记录牌力校准失败:', e.message))
+    } else {
+      console.log(`⚠️ 校准数据缺失，跳过记录`)
+    }
+    
+    // 如果是 AI 开牌，记录 AI 对玩家的策略
+    const challenger = room.game.seats[seatIndex]
+    const showdownTarget = room.game.seats[result.targetSeatIndex]
+    if (challenger?.type === 'ai' && showdownTarget) {
+      const playerProfile = room.playerProfiles?.get(showdownTarget.name)
+      updateAIPlayerStrategy(challenger.name, showdownTarget.name, {
+        playerType: getPlayerTypeFromProfile(playerProfile),
+        bluffTendency: playerProfile ? (playerProfile.bluffCaught / Math.max(playerProfile.totalHands, 1)) : 0.5,
+        aggressionLevel: playerProfile ? (playerProfile.raiseCount / Math.max(playerProfile.totalHands, 1)) : 0.5,
+        foldThreshold: playerProfile ? (playerProfile.foldCount / Math.max(playerProfile.totalHands, 1)) : 0.5,
+        recommendedStrategy: generateStrategyRecommendation(playerProfile),
+        won: result.winnerSeatIndex === seatIndex
+      }).catch(e => console.error('更新 AI 策略失败:', e.message))
     }
   }
   
@@ -693,25 +1066,72 @@ function updateUserChips(room) {
 // 游戏结束后更新战绩
 function updateUsersGameStats(room, result) {
   const winnerSeatIndex = result.winner?.seatIndex
+  const winnerHand = result.winner?.handType
+  const pot = room.game.state.pot || 0
   
-  room.clients.forEach((client) => {
-    const playerName = client.playerName
-    if (!playerName || !usersCache[playerName]) return
+  // 遍历所有座位上的玩家
+  room.game.seats.forEach((player, seatIndex) => {
+    if (!player) return
     
-    const player = room.game.seats[client.seatIndex]
-    if (!player || player.type !== 'human') return
+    const isWinner = seatIndex === winnerSeatIndex
+    const playerResult = isWinner ? 'win' : 'lose'
     
-    // 更新战绩
-    usersCache[playerName].totalGames = (usersCache[playerName].totalGames || 0) + 1
-    
-    if (client.seatIndex === winnerSeatIndex) {
-      usersCache[playerName].wins = (usersCache[playerName].wins || 0) + 1
-    } else {
-      usersCache[playerName].losses = (usersCache[playerName].losses || 0) + 1
+    // AI 玩家记录对局
+    if (player.type === 'ai') {
+      const handType = player.hand?.getType()
+      console.log(`🤖 记录AI对局: ${player.name}, 结果: ${playerResult}`)
+      recordAIGame({
+        aiName: player.name,
+        opponentName: result.winner?.name || 'unknown',
+        roomCode: room.roomCode,
+        handType: handType?.name,
+        handWeight: handType?.weight,
+        actionTaken: player.folded ? 'fold' : 'showdown',
+        result: playerResult,
+        chipsWon: isWinner ? room.game.state.pot : -player.currentBet,
+        roundCount: room.game.state.round || 1
+      }).then(() => {
+        console.log(`✅ AI对局记录成功: ${player.name}`)
+      }).catch(e => console.error('❌ 记录AI对局失败:', e.message))
     }
     
-    saveUserData(playerName)
-    console.log(`📊 更新战绩: ${playerName}`)
+    // 人类玩家更新战绩和档案
+    if (player.type === 'human') {
+      const playerName = player.name
+      if (!playerName || !usersCache[playerName]) return
+      
+      usersCache[playerName].totalGames = (usersCache[playerName].totalGames || 0) + 1
+      
+      // 记录筹码输赢到档案
+      const profileUpdates = { totalHands: 1 }  // 每局游戏结束时+1
+      if (isWinner) {
+        usersCache[playerName].wins = (usersCache[playerName].wins || 0) + 1
+        // 赢的筹码 = 底池 - 自己投入的
+        const chipsWon = pot - player.currentBet
+        if (chipsWon > 0) {
+          profileUpdates.totalChipsWon = chipsWon
+          profileUpdates.maxSingleWin = chipsWon
+        }
+        // 不通过开牌赢的（别人都弃牌了）
+        if (!player.lostShowdown && room.game.getActivePlayers().length === 1) {
+          profileUpdates.wonWithoutShowdown = 1
+        }
+      } else {
+        usersCache[playerName].losses = (usersCache[playerName].losses || 0) + 1
+        // 输的筹码 = 自己投入的
+        const chipsLost = player.currentBet
+        if (chipsLost > 0) {
+          profileUpdates.totalChipsLost = chipsLost
+          profileUpdates.maxSingleLoss = chipsLost
+        }
+      }
+      
+      room.updatePlayerProfile(playerName, profileUpdates)
+      
+      const stats = usersCache[playerName]
+      console.log(`📊 更新战绩: ${playerName} - 总场:${stats.totalGames} 胜:${stats.wins} 负:${stats.losses}`)
+      saveUserData(playerName).catch(e => console.error(`❌ 保存战绩失败 ${playerName}:`, e.message))
+    }
   })
 }
 
@@ -748,7 +1168,7 @@ function processAITurn(room) {
     
     if (result.success) {
       // 记录开牌结果到玩家档案
-      if (result.action === 'showdown') {
+      if (result.action === 'showdown' || (result.action === 'gameEnd' && result.challengerHand)) {
         const winner = game.seats[result.winnerSeatIndex]
         const loser = game.seats[result.loserSeatIndex]
         if (winner && winner.type === 'human') {
@@ -756,11 +1176,37 @@ function processAITurn(room) {
         }
         if (loser && loser.type === 'human') {
           room.updatePlayerProfile(loser.name, { showdownLosses: 1 })
+          
+          // 检测诈唬被抓
+          const loserHand = result.loserSeatIndex === seatIndex ? result.challengerHand : result.targetHand
+          if (loserHand) {
+            const isWeakHand = loserHand.weight < 3500
+            const totalBet = loser.currentBet || 0
+            if (isWeakHand && totalBet > 30) {
+              room.updatePlayerProfile(loser.name, { bluffCaught: 1 })
+              console.log(`🎭 诈唬被抓: ${loser.name}, 牌型: ${loserHand.name}(${loserHand.weight}), 总投入: ${totalBet}`)
+            }
+          }
+        }
+        
+        // 记录牌力校准数据
+        const challengerHand = result.challengerHand
+        const targetHand = result.targetHand
+        if (challengerHand && targetHand) {
+          const challengerWon = result.winnerSeatIndex === seatIndex
+          console.log(`📝 AI开牌校准: ${challengerHand.type}(${challengerHand.weight}) vs ${targetHand.type}(${targetHand.weight})`)
+          recordShowdownForCalibration(challengerHand.type, challengerHand.weight, challengerWon, targetHand.weight)
+            .then(() => console.log(`✅ 校准记录成功: ${challengerHand.type}`))
+            .catch(e => console.error('记录牌力校准失败:', e.message))
+          recordShowdownForCalibration(targetHand.type, targetHand.weight, !challengerWon, challengerHand.weight)
+            .then(() => console.log(`✅ 校准记录成功: ${targetHand.type}`))
+            .catch(e => console.error('记录牌力校准失败:', e.message))
         }
       }
       
       // 游戏结束时保存档案
       if (result.action === 'gameEnd') {
+        updateUsersGameStats(room, result)
         room.savePlayerProfiles().catch(e => console.error('保存玩家档案失败:', e.message))
       }
       
@@ -831,13 +1277,16 @@ function handleDisconnect(clientId) {
   
   console.log(`👋 玩家断线: ${client.playerName} <- ${client.roomCode}`)
   
-  // 只有房主断线且没有其他玩家时才关闭房间
-  if (wasHost && room.clients.size === 0 && room.disconnectedPlayers.size <= 1) {
-    room.broadcast({ type: 'room_closed', message: '房间已关闭' })
+  // 只有当没有任何玩家（包括断线等待重连的）时才关闭房间
+  const hasDisconnectedPlayers = room.disconnectedPlayers.size > 0
+  const hasConnectedPlayers = room.clients.size > 0
+  
+  if (!hasConnectedPlayers && !hasDisconnectedPlayers) {
+    // 没有任何玩家了，关闭房间
     rooms.delete(client.roomCode)
-    console.log(`🚪 房间关闭: ${client.roomCode}`)
-  } else if (wasHost && room.clients.size > 0) {
-    // 转移房主
+    console.log(`🚪 房间关闭（无玩家）: ${client.roomCode}`)
+  } else if (wasHost && hasConnectedPlayers) {
+    // 房主断线但还有其他在线玩家，转移房主
     const newHost = room.transferHost()
     if (newHost) {
       room.broadcast({
@@ -845,14 +1294,19 @@ function handleDisconnect(clientId) {
         newHostName: newHost.newHostName
       })
     }
+  } else if (!hasConnectedPlayers && hasDisconnectedPlayers) {
+    // 没有在线玩家但有断线玩家等待重连，保持房间存活
+    console.log(`⏸️ 房间保持存活，等待玩家重连: ${client.roomCode} (${room.disconnectedPlayers.size}人断线)`)
   }
   
-  // 通知其他玩家有人断线
-  room.broadcast({
-    type: 'player_disconnected',
-    playerName: client.playerName,
-    players: room.getPlayerList()
-  })
+  // 通知其他在线玩家有人断线
+  if (hasConnectedPlayers) {
+    room.broadcast({
+      type: 'player_disconnected',
+      playerName: client.playerName,
+      players: room.getPlayerList()
+    })
+  }
 }
 
 // 重连处理
@@ -883,7 +1337,15 @@ function handleReconnect(clientId, data) {
   client.roomCode = roomCode
   client.playerName = playerName
   
-  console.log(`🔄 玩家重连成功: ${playerName} -> ${roomCode}`)
+  // 如果是原房主重连且当前没有房主，恢复房主身份
+  if (reconnectInfo.seatIndex === room.hostSeatIndex || room.clients.size === 1) {
+    room.hostId = clientId
+    room.hostName = playerName
+  }
+  
+  const isHost = room.isHost(clientId)
+  
+  console.log(`🔄 玩家重连成功: ${playerName} -> ${roomCode} (房主: ${isHost})`)
   
   // 发送重连成功消息
   send(client.ws, {
@@ -891,7 +1353,7 @@ function handleReconnect(clientId, data) {
     roomCode,
     seatIndex: result.seatIndex,
     players: room.getPlayerList(),
-    isHost: room.isHost(clientId),
+    isHost: isHost,
     gameStarted: room.gameStarted
   })
   
@@ -925,6 +1387,49 @@ function generateId() {
 // 生成房间码
 function generateRoomCode() {
   return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+// 根据玩家档案判断玩家类型
+function getPlayerTypeFromProfile(profile) {
+  if (!profile || !profile.totalHands) return 'unknown'
+  const foldRate = profile.foldCount / profile.totalHands
+  const raiseRate = profile.raiseCount / profile.totalHands
+  
+  if (raiseRate > 0.4) return 'aggressive'
+  if (foldRate > 0.5) return 'tight'
+  if (raiseRate < 0.15 && foldRate < 0.3) return 'passive'
+  return 'balanced'
+}
+
+// 生成策略建议
+function generateStrategyRecommendation(profile) {
+  if (!profile || !profile.totalHands || profile.totalHands < 5) {
+    return '数据不足，继续观察'
+  }
+  
+  const foldRate = profile.foldCount / profile.totalHands
+  const raiseRate = profile.raiseCount / profile.totalHands
+  const bluffRate = profile.bluffCaught / profile.totalHands
+  
+  const tips = []
+  
+  if (foldRate > 0.5) {
+    tips.push('容易弃牌，可用激进策略逼退')
+  }
+  if (raiseRate > 0.4) {
+    tips.push('频繁加注，大注时需谨慎判断真假')
+  }
+  if (bluffRate > 0.15) {
+    tips.push('诈唬被抓率高，大注可能是虚张声势')
+  }
+  if (profile.blindBetCount / profile.totalHands > 0.3) {
+    tips.push('喜欢焖牌，难以读牌')
+  }
+  if (profile.avgPeekRound > 3) {
+    tips.push('看牌较晚，可能是焖牌高手')
+  }
+  
+  return tips.length > 0 ? tips.join('；') : '打法均衡，需综合判断'
 }
 
 // 同步用户数据

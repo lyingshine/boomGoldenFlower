@@ -254,9 +254,9 @@ export default {
       if (!player) return false
       if (!player.cards || player.cards.length <= index) return false
       
-      // 自己的牌：看过牌或者比牌输了才显示
+      // 自己的牌：看过牌、比牌输了、或游戏结束时都显示
       if (player.id === this.mySeatIndex) {
-        return player.hasPeeked || player.lostShowdown
+        return player.hasPeeked || player.lostShowdown || this.gamePhase === 'ended'
       }
       
       // 别人的牌：有数据就显示（服务端只会发送你有权看到的牌）
@@ -627,18 +627,21 @@ export default {
 
 .showdown-result-corner {
   position: fixed !important;
-  left: 12px !important;
-  top: 100px !important;
-  background: linear-gradient(145deg, rgba(139, 92, 246, 0.96) 0%, rgba(109, 40, 217, 0.94) 50%, rgba(91, 33, 182, 0.92) 100%) !important;
-  border: 1px solid rgba(167, 139, 250, 0.5) !important;
-  border-radius: 14px !important;
-  padding: 14px 18px !important;
+  left: 8px !important;
+  top: 130px !important;
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.94) 0%, rgba(109, 40, 217, 0.92) 50%, rgba(91, 33, 182, 0.90) 100%) !important;
+  border: 1px solid rgba(167, 139, 250, 0.4) !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
   z-index: 9999 !important;
   animation: showdownSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow: 
-    0 8px 32px rgba(139, 92, 246, 0.4),
-    0 4px 16px rgba(0, 0, 0, 0.3),
+    0 4px 16px rgba(139, 92, 246, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  width: 120px !important;
+  min-width: 120px !important;
+  max-width: 120px !important;
 }
 
 @keyframes showdownSlideIn {
@@ -647,30 +650,30 @@ export default {
 }
 
 .showdown-result-corner .showdown-title {
-  font-size: 13px;
+  font-size: 11px !important;
   font-weight: bold;
   color: #ffd700;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .showdown-result-corner .showdown-players {
-  font-size: 12px;
+  font-size: 10px !important;
   color: white;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   font-weight: 500;
 }
 
 .showdown-result-corner .showdown-players .vs {
   color: #fbbf24;
-  margin: 0 6px;
+  margin: 0 4px;
   font-weight: bold;
 }
 
 .showdown-result-corner .showdown-hands {
-  font-size: 11px;
+  font-size: 9px !important;
   color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .showdown-result-corner .showdown-hands .vs-small {
@@ -679,14 +682,14 @@ export default {
 }
 
 .showdown-result-corner .showdown-winner {
-  font-size: 12px;
+  font-size: 10px !important;
   font-weight: bold;
   color: #4ade80;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 5px 12px;
-  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 3px 8px;
+  border-radius: 6px;
   text-align: center;
-  border: 1px solid rgba(74, 222, 128, 0.3);
+  border: 1px solid rgba(74, 222, 128, 0.25);
 }
 
 /* 轮到我时手牌发光 */

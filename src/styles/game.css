@@ -201,3 +201,106 @@
 .deck-card:nth-child(3) { top: -4px; left: 4px; z-index: 3; }
 .deck-card:nth-child(4) { top: -6px; left: 6px; z-index: 2; }
 .deck-card:nth-child(5) { top: -8px; left: 8px; z-index: 1; }
+
+
+/* ========== 胜利特效 ========== */
+
+/* 屏幕震动 - 轻度 */
+.shake-light {
+  animation: shakeLight 0.4s ease-in-out;
+}
+
+@keyframes shakeLight {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
+/* 屏幕震动 - 中度 */
+.shake-medium {
+  animation: shakeMedium 0.5s ease-in-out;
+}
+
+@keyframes shakeMedium {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-5px, -2px); }
+  20% { transform: translate(5px, 2px); }
+  30% { transform: translate(-4px, 1px); }
+  40% { transform: translate(4px, -1px); }
+  50% { transform: translate(-3px, 2px); }
+  60% { transform: translate(3px, -2px); }
+  70% { transform: translate(-2px, 1px); }
+  80% { transform: translate(2px, -1px); }
+  90% { transform: translate(-1px, 0); }
+}
+
+/* 屏幕震动 - 强烈（豹子/同花顺） */
+.shake-heavy {
+  animation: shakeHeavy 0.6s ease-in-out;
+}
+
+@keyframes shakeHeavy {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  10% { transform: translate(-8px, -4px) rotate(-1deg); }
+  20% { transform: translate(8px, 4px) rotate(1deg); }
+  30% { transform: translate(-6px, 2px) rotate(-0.5deg); }
+  40% { transform: translate(6px, -2px) rotate(0.5deg); }
+  50% { transform: translate(-4px, 3px) rotate(-0.3deg); }
+  60% { transform: translate(4px, -3px) rotate(0.3deg); }
+  70% { transform: translate(-3px, 1px); }
+  80% { transform: translate(3px, -1px); }
+  90% { transform: translate(-1px, 0); }
+}
+
+/* 胜利时底池高亮闪烁 */
+.pot-display.winner-flash {
+  animation: potFlash 0.8s ease-in-out 3;
+}
+
+@keyframes potFlash {
+  0%, 100% { 
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+  }
+  50% { 
+    box-shadow: 0 4px 40px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 215, 0, 0.5);
+  }
+}
+
+/* 赢家头像光环 */
+.winner-player .player-avatar {
+  animation: winnerGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes winnerGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(255, 215, 0, 0.9), 0 0 70px rgba(255, 215, 0, 0.5);
+  }
+}
+
+/* 筹码飞向赢家动画 */
+.chips-to-winner {
+  position: fixed;
+  font-size: 24px;
+  animation: flyToWinner 1s ease-in forwards;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+@keyframes flyToWinner {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5) translate(var(--tx), var(--ty));
+  }
+}

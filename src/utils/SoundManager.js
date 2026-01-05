@@ -26,8 +26,17 @@ export class SoundManager {
   }
 
   createSounds() {
-    // 发牌音效 - 清脆的卡牌滑动声
+    // 发牌音效 - 真实扑克牌滑动+落桌声
     this.sounds.card = () => this.playCardSound()
+    
+    // 洗牌音效
+    this.sounds.shuffle = () => this.playShuffleSound()
+    
+    // 翻牌音效
+    this.sounds.flip = () => this.playFlipSound()
+    
+    // 收牌音效
+    this.sounds.collect = () => this.playCollectSound()
     
     // 筹码音效 - 金属碰撞声（多层次）
     this.sounds.chip = () => this.playChipSound()
@@ -79,15 +88,248 @@ export class SoundManager {
     
     // 消息提示
     this.sounds.message = () => this.playTone([600, 800], 0.1, 0.15, 'sine')
+    
+    // ========== UI 交互音效 ==========
+    
+    // 按钮悬停 - 轻柔提示
+    this.sounds.hover = () => this.playTone([1200], 0.02, 0.08, 'sine')
+    
+    // 按钮按下 - 清脆确认
+    this.sounds.press = () => this.playTone([600, 800], 0.04, 0.12, 'sine')
+    
+    // 按钮释放
+    this.sounds.release = () => this.playTone([800, 600], 0.03, 0.08, 'sine')
+    
+    // 开关切换 - 开
+    this.sounds.toggleOn = () => this.playTone([400, 600, 800], 0.08, 0.15, 'sine')
+    
+    // 开关切换 - 关
+    this.sounds.toggleOff = () => this.playTone([600, 400, 300], 0.08, 0.12, 'sine')
+    
+    // 滑块拖动
+    this.sounds.slide = () => this.playTone([500 + Math.random() * 200], 0.02, 0.06, 'sine')
+    
+    // 弹窗打开 - 展开感
+    this.sounds.modalOpen = () => {
+      this.playTone([300, 500], 0.1, 0.15, 'sine')
+      setTimeout(() => this.playTone([600, 800], 0.08, 0.12, 'sine'), 50)
+    }
+    
+    // 弹窗关闭 - 收缩感
+    this.sounds.modalClose = () => this.playTone([500, 300, 200], 0.1, 0.12, 'sine')
+    
+    // 输入框聚焦
+    this.sounds.focus = () => this.playTone([800, 1000], 0.03, 0.1, 'sine')
+    
+    // 输入框失焦
+    this.sounds.blur = () => this.playTone([600, 400], 0.03, 0.08, 'sine')
+    
+    // 打字音效
+    this.sounds.type = () => this.playTone([1000 + Math.random() * 200], 0.015, 0.06, 'square')
+    
+    // 删除音效
+    this.sounds.delete = () => this.playTone([600, 400], 0.03, 0.08, 'square')
+    
+    // 成功确认 - 积极反馈
+    this.sounds.success = () => {
+      this.playTone([523, 659], 0.1, 0.2, 'sine')
+      setTimeout(() => this.playTone([784], 0.15, 0.25, 'sine'), 100)
+    }
+    
+    // 警告提示
+    this.sounds.warning = () => this.playTone([400, 350, 400], 0.15, 0.2, 'triangle')
+    
+    // 列表项选中
+    this.sounds.select = () => this.playTone([700, 900], 0.05, 0.12, 'sine')
+    
+    // 拖拽开始
+    this.sounds.dragStart = () => this.playTone([400, 500], 0.06, 0.1, 'sine')
+    
+    // 拖拽放下
+    this.sounds.dragEnd = () => this.playTone([600, 500, 400], 0.08, 0.12, 'sine')
+    
+    // 刷新/加载
+    this.sounds.refresh = () => {
+      this.playTone([400, 600, 800, 600], 0.2, 0.12, 'sine')
+    }
+    
+    // 通知弹出
+    this.sounds.notify = () => {
+      this.playTone([800, 1000], 0.08, 0.15, 'sine')
+      setTimeout(() => this.playTone([1200], 0.1, 0.12, 'sine'), 80)
+    }
+    
+    // 金币/奖励音效
+    this.sounds.coin = () => {
+      this.playTone([1800, 2200], 0.06, 0.15, 'sine')
+      setTimeout(() => this.playTone([2000, 2400], 0.05, 0.12, 'sine'), 40)
+      setTimeout(() => this.playTone([2200, 2600], 0.04, 0.1, 'sine'), 80)
+    }
+    
+    // 倒计时最后几秒 - 心跳感
+    this.sounds.heartbeat = () => {
+      this.playTone([80, 60], 0.15, 0.35, 'sine')
+      setTimeout(() => this.playTone([100, 70], 0.1, 0.25, 'sine'), 150)
+    }
+    
+    // 全押 All-in 震撼音效
+    this.sounds.allIn = () => {
+      // 低音冲击
+      this.playTone([60, 80, 60], 0.3, 0.5, 'sine')
+      // 筹码雨
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => this.playChipSound(), i * 80)
+      }
+      // 高音强调
+      setTimeout(() => {
+        this.playTone([800, 1200, 1600], 0.2, 0.3, 'sine')
+      }, 400)
+    }
+    
+    // 跟注
+    this.sounds.call = () => {
+      this.playTone([500, 600], 0.08, 0.15, 'sine')
+      setTimeout(() => this.playChipSound(), 50)
+    }
+    
+    // 加注
+    this.sounds.raise = () => {
+      this.playTone([500, 700, 900], 0.1, 0.18, 'sine')
+      setTimeout(() => this.playChipSound(), 80)
+      setTimeout(() => this.playChipSound(), 160)
+    }
   }
 
-  // 发牌音效 - 模拟卡牌滑动
+  // 发牌音效 - 真实扑克牌滑动+落桌声
   playCardSound() {
+    if (!this.audioContext || !this.enabled) return
+    
     const now = this.audioContext.currentTime
-    // 白噪声模拟摩擦
-    this.playNoise(0.06, 0.15, 2000, 4000)
-    // 轻微的音调
-    this.playTone([600, 400], 0.05, 0.1, 'sine')
+    
+    // 1. 卡牌从牌堆抽出的摩擦声（高频短促噪声）
+    this.playFilteredNoise(0.05, 0.4, 3000, 6000, 'highpass')
+    
+    // 2. 卡牌滑动的"刷"声（中频带通噪声，模拟纸张摩擦）
+    setTimeout(() => {
+      this.playFilteredNoise(0.07, 0.35, 1500, 3500, 'bandpass')
+    }, 20)
+    
+    // 3. 卡牌落桌的轻微"啪"声（低频冲击 + 高频瞬态）
+    setTimeout(() => {
+      // 低频冲击感
+      this.playTone([180, 100], 0.04, 0.5, 'sine')
+      // 高频瞬态（纸牌边缘触桌）
+      this.playFilteredNoise(0.03, 0.45, 2000, 5000, 'highpass')
+    }, 50)
+    
+    // 4. 轻微的桌面共振（低沉的尾音）
+    setTimeout(() => {
+      this.playTone([80, 50], 0.1, 0.2, 'sine')
+    }, 70)
+  }
+  
+  // 洗牌音效 - 多张牌快速翻动
+  playShuffleSound() {
+    if (!this.audioContext || !this.enabled) return
+    
+    // 模拟洗牌时多张牌快速滑动的声音
+    const shuffleCount = 8 + Math.floor(Math.random() * 4)
+    for (let i = 0; i < shuffleCount; i++) {
+      const delay = i * 25 + Math.random() * 15
+      setTimeout(() => {
+        // 随机化每张牌的音调，增加真实感
+        const freqVariation = 0.8 + Math.random() * 0.4
+        this.playFilteredNoise(0.025, 0.08 * freqVariation, 2500, 5000, 'bandpass')
+      }, delay)
+    }
+    
+    // 洗牌结束的整理声
+    setTimeout(() => {
+      this.playFilteredNoise(0.08, 0.12, 1000, 3000, 'bandpass')
+      this.playTone([100, 60], 0.05, 0.1, 'sine')
+    }, shuffleCount * 25 + 50)
+  }
+  
+  // 翻牌音效 - 牌面翻转
+  playFlipSound() {
+    if (!this.audioContext || !this.enabled) return
+    
+    // 翻牌的"唰"声
+    this.playFilteredNoise(0.05, 0.1, 2000, 4500, 'bandpass')
+    
+    // 牌面落下的轻响
+    setTimeout(() => {
+      this.playTone([200, 100], 0.03, 0.12, 'sine')
+      this.playFilteredNoise(0.02, 0.08, 3000, 6000, 'highpass')
+    }, 40)
+  }
+  
+  // 收牌音效 - 把牌收回
+  playCollectSound() {
+    if (!this.audioContext || !this.enabled) return
+    
+    // 多张牌滑动堆叠
+    for (let i = 0; i < 4; i++) {
+      setTimeout(() => {
+        this.playFilteredNoise(0.04, 0.08, 1800, 4000, 'bandpass')
+      }, i * 60)
+    }
+    
+    // 整理牌堆的声音
+    setTimeout(() => {
+      this.playFilteredNoise(0.1, 0.15, 800, 2500, 'bandpass')
+      this.playTone([80, 50], 0.06, 0.1, 'sine')
+    }, 280)
+  }
+  
+  // 带滤波器的噪声播放（更真实的纸牌声）
+  playFilteredNoise(duration, gain, lowFreq, highFreq, filterType = 'bandpass') {
+    if (!this.audioContext || !this.enabled) return
+    
+    try {
+      const bufferSize = Math.floor(this.audioContext.sampleRate * duration)
+      const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate)
+      const data = buffer.getChannelData(0)
+      
+      // 生成粉红噪声（比白噪声更自然）
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1
+        b0 = 0.99886 * b0 + white * 0.0555179
+        b1 = 0.99332 * b1 + white * 0.0750759
+        b2 = 0.96900 * b2 + white * 0.1538520
+        b3 = 0.86650 * b3 + white * 0.3104856
+        b4 = 0.55000 * b4 + white * 0.5329522
+        b5 = -0.7616 * b5 - white * 0.0168980
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11
+        b6 = white * 0.115926
+      }
+      
+      const noise = this.audioContext.createBufferSource()
+      noise.buffer = buffer
+      
+      // 滤波器
+      const filter = this.audioContext.createBiquadFilter()
+      filter.type = filterType
+      filter.frequency.value = (lowFreq + highFreq) / 2
+      filter.Q.value = filterType === 'bandpass' ? 0.8 : 0.5
+      
+      // 包络
+      const gainNode = this.audioContext.createGain()
+      const now = this.audioContext.currentTime
+      
+      // 快速起音，自然衰减
+      gainNode.gain.setValueAtTime(0, now)
+      gainNode.gain.linearRampToValueAtTime(this.volume * gain, now + 0.003)
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration)
+      
+      noise.connect(filter)
+      filter.connect(gainNode)
+      gainNode.connect(this.audioContext.destination)
+      
+      noise.start(now)
+      noise.stop(now + duration)
+    } catch (e) {}
   }
 
   // 筹码音效 - 金属碰撞
@@ -310,5 +552,113 @@ export class SoundManager {
 
   isEnabled() {
     return this.enabled
+  }
+
+  /**
+   * 绑定全局 UI 音效
+   * 自动为页面上的交互元素添加音效反馈
+   */
+  bindGlobalUISound() {
+    if (typeof document === 'undefined') return
+    
+    // 防止重复绑定
+    if (this._globalBound) return
+    this._globalBound = true
+    
+    // 按钮悬停和点击
+    document.addEventListener('mouseenter', (e) => {
+      const target = e.target
+      if (this.isInteractiveElement(target)) {
+        this.play('hover')
+      }
+    }, true)
+    
+    document.addEventListener('mousedown', (e) => {
+      const target = e.target
+      if (this.isInteractiveElement(target)) {
+        this.play('press')
+      }
+    }, true)
+    
+    document.addEventListener('mouseup', (e) => {
+      const target = e.target
+      if (this.isInteractiveElement(target)) {
+        this.play('release')
+      }
+    }, true)
+    
+    // 输入框聚焦
+    document.addEventListener('focusin', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        this.play('focus')
+      }
+    }, true)
+    
+    // 键盘输入
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        if (e.key === 'Backspace' || e.key === 'Delete') {
+          this.play('delete')
+        } else if (e.key.length === 1) {
+          this.play('type')
+        }
+      }
+    }, true)
+  }
+  
+  /**
+   * 判断是否为可交互元素
+   */
+  isInteractiveElement(el) {
+    if (!el || !el.tagName) return false
+    const tag = el.tagName.toLowerCase()
+    const interactiveTags = ['button', 'a', 'select', 'label']
+    if (interactiveTags.includes(tag)) return true
+    if (el.getAttribute('role') === 'button') return true
+    if (el.classList?.contains('btn') || el.classList?.contains('clickable')) return true
+    if (el.onclick || el.hasAttribute('onclick')) return true
+    return false
+  }
+  
+  /**
+   * 播放带强度的音效
+   * @param {string} soundName 音效名称
+   * @param {number} intensity 强度 0-1，影响音量和音调
+   */
+  playWithIntensity(soundName, intensity = 0.5) {
+    const originalVolume = this.volume
+    this.volume = originalVolume * (0.5 + intensity * 0.5)
+    this.play(soundName)
+    this.volume = originalVolume
+  }
+  
+  /**
+   * 播放连续音效（如筹码堆叠）
+   * @param {string} soundName 音效名称
+   * @param {number} count 播放次数
+   * @param {number} interval 间隔毫秒
+   */
+  playSequence(soundName, count = 3, interval = 50) {
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => this.play(soundName), i * interval)
+    }
+  }
+  
+  /**
+   * 根据金额大小播放对应强度的筹码音效
+   * @param {number} amount 金额
+   * @param {number} maxAmount 最大金额参考值
+   */
+  playChipsByAmount(amount, maxAmount = 10000) {
+    const ratio = Math.min(amount / maxAmount, 1)
+    if (ratio > 0.8) {
+      this.play('bigBet')
+    } else if (ratio > 0.5) {
+      this.playSequence('chip', 3, 60)
+    } else if (ratio > 0.2) {
+      this.playSequence('chip', 2, 80)
+    } else {
+      this.play('chip')
+    }
   }
 }

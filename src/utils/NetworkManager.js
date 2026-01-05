@@ -389,6 +389,26 @@ export class NetworkManager {
       case 'action_message':
         if (this.onActionMessage) this.onActionMessage(message)
         break
+        
+      case 'ai_profiles':
+        if (this.onAIProfiles) this.onAIProfiles(message)
+        break
+        
+      case 'ai_detail':
+        if (this.onAIDetail) this.onAIDetail(message)
+        break
+        
+      case 'clear_ai_data_result':
+        if (this.onClearAIData) this.onClearAIData(message)
+        break
+        
+      case 'batch_test_progress':
+        if (this.onBatchTestProgress) this.onBatchTestProgress(message)
+        break
+        
+      case 'batch_test_result':
+        if (this.onBatchTestResult) this.onBatchTestResult(message)
+        break
     }
   }
 
@@ -651,5 +671,65 @@ export class NetworkManager {
       isHost: this.isHost,
       seatIndex: this.seatIndex
     }
+  }
+
+  // 获取 AI 玩家档案
+  getAIProfiles() {
+    return new Promise((resolve) => {
+      this.onAIProfiles = (msg) => {
+        this.onAIProfiles = null
+        resolve({
+          profiles: msg.profiles || [],
+          aiStats: msg.aiStats || [],
+          handJudgments: msg.handJudgments || [],
+          handCalibrations: msg.handCalibrations || [],
+          playerStrategies: msg.playerStrategies || []
+        })
+      }
+      this.send({ type: 'get_ai_profiles' })
+      
+      setTimeout(() => {
+        if (this.onAIProfiles) {
+          this.onAIProfiles = null
+          resolve({ profiles: [], aiStats: [], handJudgments: [], handCalibrations: [], playerStrategies: [] })
+        }
+      }, 3000)
+    })
+  }
+
+  // 获取单个 AI 详情
+  getAIDetail(aiName) {
+    return new Promise((resolve) => {
+      this.onAIDetail = (msg) => {
+        this.onAIDetail = null
+        resolve({ detail: msg.detail, strategies: msg.strategies || [] })
+      }
+      this.send({ type: 'get_ai_detail', aiName })
+      
+      setTimeout(() => {
+        if (this.onAIDetail) {
+          this.onAIDetail = null
+          resolve({ detail: null, strategies: [] })
+        }
+      }, 3000)
+    })
+  }
+
+  // 清除所有 AI 数据
+  clearAIData() {
+    return new Promise((resolve) => {
+      this.onClearAIData = (msg) => {
+        this.onClearAIData = null
+        resolve(msg.success)
+      }
+      this.send({ type: 'clear_ai_data' })
+      
+      setTimeout(() => {
+        if (this.onClearAIData) {
+          this.onClearAIData = null
+          resolve(false)
+        }
+      }, 5000)
+    })
   }
 }

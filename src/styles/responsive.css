@@ -241,9 +241,9 @@
   }
   
   .player-seat.human-player .game-card {
-    width: 50px;
-    height: 70px;
-    font-size: 18px;
+    width: 42px;
+    height: 60px;
+    font-size: 15px;
   }
   
   .pot-display {
@@ -503,29 +503,29 @@
   
   /* 人类玩家的牌稍大 */
   .player-seat.human-player .game-card {
-    width: 36px;
-    height: 52px;
-    font-size: 14px;
+    width: 32px;
+    height: 46px;
+    font-size: 12px;
     border-width: 1px;
   }
   
   .player-seat.human-player .game-card.card-back::before {
-    font-size: 14px;
+    font-size: 12px;
   }
   
   .player-seat.human-player .game-card.card-back::after {
-    top: 3px;
-    left: 3px;
-    right: 3px;
-    bottom: 3px;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
   }
   
-  /* 开牌阶段的�?- 统一尺寸 */
+  /* 开牌阶段的牌 - 统一尺寸 */
   .new-game-table.showdown-phase .player-seat:not(.folded-player) .game-card,
   .new-game-table.showdown-phase .player-seat.human-player .game-card {
-    width: 42px !important;
-    height: 60px !important;
-    font-size: 15px !important;
+    width: 36px !important;
+    height: 52px !important;
+    font-size: 13px !important;
     border-width: 1px;
   }
   
@@ -1288,9 +1288,9 @@
   }
   
   .player-seat.human-player .game-card {
-    width: 34px;
-    height: 48px;
-    font-size: 13px;
+    width: 28px;
+    height: 40px;
+    font-size: 11px;
   }
   
   /* 座位位置微调 - 统一20px距离 */
@@ -1431,9 +1431,9 @@
   }
   
   .player-seat.human-player .game-card {
-    width: 60px;
-    height: 84px;
-    font-size: 22px;
+    width: 50px;
+    height: 70px;
+    font-size: 18px;
   }
   
   .pot-display {

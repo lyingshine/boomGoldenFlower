@@ -127,6 +127,28 @@
         </div>
       </div>
 
+      <!-- 进行中对局提示弹窗 -->
+      <div v-if="showActiveGameModal" class="active-game-modal">
+        <div class="active-game-content">
+          <div class="active-game-icon">⚠️</div>
+          <div class="active-game-title">发现进行中的对局</div>
+          <div class="active-game-desc">
+            您在房间 <span class="room-code-highlight">{{ activeGameRoomCode }}</span> 有一局未完成的游戏
+          </div>
+          <div class="active-game-actions">
+            <button @click="handleActiveGameChoice('rejoin')" class="btn btn-primary">
+              🔄 返回对局
+            </button>
+            <button @click="handleActiveGameChoice('abandon')" class="btn btn-warning">
+              🚪 放弃并开新局
+            </button>
+            <button @click="handleActiveGameChoice('cancel')" class="btn btn-secondary">
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- 排行榜 -->
       <div v-if="showLeaderboard && !inRoom" class="leaderboard-panel">
         <div class="leaderboard-header">
@@ -328,7 +350,11 @@ export default {
       newNickname: '',
       previewAvatarUrl: null,
       avatarFile: null,
-      avatarOptions: ['😎', '😊', '😄', '🙂', '😏', '🤔', '😌', '🧐', '😁', '🤨', '😤', '🙄', '😶', '🤩', '😇', '🥳']
+      avatarOptions: ['😎', '😊', '😄', '🙂', '😏', '🤔', '😌', '🧐', '😁', '🤨', '😤', '🙄', '😶', '🤩', '😇', '🥳'],
+      // 进行中对局提示
+      showActiveGameModal: false,
+      activeGameRoomCode: '',
+      activeGamePromptResolve: null
     }
   },
   computed: {
@@ -487,6 +513,21 @@ export default {
       }
     },
     async createRoom() {
+      // 检查是否有进行中的对局
+      const session = this.networkManager.getSavedSession()
+      if (session && session.roomCode) {
+        const choice = await this.showActiveGamePrompt(session.roomCode)
+        if (choice === 'rejoin') {
+          // 重新加入之前的对局
+          await this.rejoinPreviousGame(session)
+          return
+        } else if (choice === 'cancel') {
+          return
+        }
+        // choice === 'abandon'，继续创建新房间
+        this.networkManager.clearSession()
+      }
+      
       this.isCreating = true
       const user = this.userManager.getCurrentUser()
       await this.networkManager.createRoom(user.username)
@@ -503,12 +544,57 @@ export default {
         alert('房间已满，请选择其他房间'); 
         return 
       }
+      
+      // 检查是否有进行中的对局
+      const session = this.networkManager.getSavedSession()
+      if (session && session.roomCode && session.roomCode !== room.roomCode) {
+        const choice = await this.showActiveGamePrompt(session.roomCode)
+        if (choice === 'rejoin') {
+          await this.rejoinPreviousGame(session)
+          return
+        } else if (choice === 'cancel') {
+          return
+        }
+        // choice === 'abandon'，继续加入新房间
+        this.networkManager.clearSession()
+      }
+      
       const user = this.userManager.getCurrentUser()
       await this.networkManager.joinRoom(room.roomCode, user.username)
       this.showRoomList = false
     },
     addAI() { this.networkManager.addAI() },
     removeAI(seatIndex) { this.networkManager.removeAI(seatIndex) },
+    
+    // 显示进行中对局提示
+    showActiveGamePrompt(roomCode) {
+      return new Promise((resolve) => {
+        this.activeGameRoomCode = roomCode
+        this.activeGamePromptResolve = resolve
+        this.showActiveGameModal = true
+      })
+    },
+    
+    // 处理对局提示选择
+    handleActiveGameChoice(choice) {
+      this.showActiveGameModal = false
+      if (this.activeGamePromptResolve) {
+        this.activeGamePromptResolve(choice)
+        this.activeGamePromptResolve = null
+      }
+    },
+    
+    // 重新加入之前的对局
+    async rejoinPreviousGame(session) {
+      try {
+        await this.networkManager.connect()
+        await this.networkManager.reconnectToRoom(session.roomCode)
+      } catch (e) {
+        alert('重连失败，对局可能已结束')
+        this.networkManager.clearSession()
+      }
+    },
+    
     leave() {
       this.showRoomList = false
       this.$emit('leave-lobby')
@@ -1643,5 +1729,91 @@ export default {
   right: 12px;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.25);
+}
+
+/* ===== 进行中对局提示弹窗 ===== */
+.active-game-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(8px);
+}
+
+.active-game-content {
+  background: linear-gradient(165deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 20px;
+  padding: 32px 28px;
+  max-width: 340px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.1);
+}
+
+.active-game-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.active-game-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffd700;
+  margin-bottom: 12px;
+}
+
+.active-game-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.room-code-highlight {
+  color: #ffd700;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
+}
+
+.active-game-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.active-game-actions .btn {
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+.active-game-actions .btn-primary {
+  background: linear-gradient(135deg, #ffd700 0%, #b8860b 100%);
+  color: #000;
+}
+
+.active-game-actions .btn-warning {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.active-game-actions .btn-warning:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.active-game-actions .btn-secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.6);
 }
 </style>

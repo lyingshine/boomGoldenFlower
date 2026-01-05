@@ -1,5 +1,8 @@
 <template>
   <div class="game-container no-select">
+    <!-- 粒子特效 -->
+    <ParticleEffect ref="particles" />
+    
     <!-- 登录模态框 -->
     <LoginModal 
       v-if="showLoginModal"
@@ -90,10 +93,11 @@ import LobbyPanel from './components/LobbyPanel.vue'
 import GameHeader from './components/GameHeader.vue'
 import GameTable from './components/GameTable.vue'
 import GameControls from './components/GameControls.vue'
+import ParticleEffect from './components/ParticleEffect.vue'
 
 export default {
   name: 'App',
-  components: { LoginModal, LobbyPanel, GameHeader, GameTable, GameControls },
+  components: { LoginModal, LobbyPanel, GameHeader, GameTable, GameControls, ParticleEffect },
   data() {
     return {
       gameState: new ClientGameState(),
@@ -112,7 +116,8 @@ export default {
       showdownPreview: null,  // 开牌时展示对手手牌
       pendingShowdownTarget: null,  // 等待开牌结果的目标
       chatMessages: [],  // 聊天消息列表
-      actionMessages: []  // 操作消息列表（下注等）
+      actionMessages: [],  // 操作消息列表（下注等）
+      winStreak: 0  // 连胜计数（正数连胜，负数连败）
     }
   },
   computed: {
@@ -144,7 +149,14 @@ export default {
   },
   methods: {
     initManagers() {
-      try { this.soundManager = new SoundManager() } catch (e) { console.warn('音效初始化失败') }
+      try { 
+        this.soundManager = new SoundManager()
+        this.soundManager.init()
+        // 绑定全局 UI 音效，让所有界面的交互都有反馈
+        this.soundManager.bindGlobalUISound()
+        // 挂载到全局，方便子组件访问
+        window.$sound = this.soundManager
+      } catch (e) { console.warn('音效初始化失败') }
       this.networkManager = new NetworkManager()
       this.userManager = new UserManager(this.networkManager)
       this.setupNetworkCallbacks()
@@ -157,13 +169,19 @@ export default {
     },
     async tryAutoReconnect() {
       const session = this.networkManager.getSavedSession()
-      if (session) {
-        console.log('🔄 发现保存的会话，尝试重连...')
+      if (session && session.roomCode) {
+        console.log('🔄 发现保存的会话，自动重连中...')
+        this.isLoading = true
+        this.loadingText = '正在重连对局...'
         try {
           await this.networkManager.connect()
           await this.networkManager.reconnectToRoom(session.roomCode)
         } catch (e) {
           console.log('自动重连失败:', e)
+          this.networkManager.clearSession()
+        } finally {
+          this.isLoading = false
+          this.loadingText = ''
         }
       }
     },
@@ -191,13 +209,16 @@ export default {
         this.showLoginModal = false
         if (msg.gameStarted) {
           this.showLobbyModal = false
+          // 播放提示音
+          this.soundManager?.play('notify')
         } else {
           this.showLobbyModal = true
         }
-        console.log('🔄 重连成功')
+        console.log('🔄 重连成功，房间:', msg.roomCode)
       }
       nm.onReconnectFailed = (msg) => {
         console.log('❌ 重连失败:', msg)
+        this.networkManager.clearSession()
         this.showLobbyModal = true
       }
       nm.onPlayerDisconnected = (msg) => {
@@ -274,6 +295,24 @@ export default {
         const winner = this.gameState.winner
         const isMyWin = winner && winner.seatIndex === this.mySeatIndex
         
+        // 更新连胜计数
+        if (isMyWin) {
+          this.winStreak = this.winStreak > 0 ? this.winStreak + 1 : 1
+        } else {
+          this.winStreak = this.winStreak < 0 ? this.winStreak - 1 : -1
+        }
+        
+        // 更新本地用户数据（战绩和筹码）
+        this.updateLocalUserStats(isMyWin)
+        
+        // 触发胜利特效
+        this.triggerWinEffects(winner)
+        
+        // 触发连胜提示
+        setTimeout(() => {
+          this.$refs.particles?.triggerStreakEffect(this.winStreak, isMyWin)
+        }, 800)
+        
         // 根据牌型播放特殊音效
         if (winner?.handType) {
           this.soundManager?.playHandTypeSound(winner.handType)
@@ -290,17 +329,22 @@ export default {
       }
     },
     handleActionResult(result) {
-      // 下注相关音效
+      // 下注相关音效 - 根据金额调整强度
       if (['call', 'blind'].includes(result.action)) {
-        this.soundManager?.play('chip')
+        this.soundManager?.play('call')
       }
-      if (['raise', 'allin'].includes(result.action)) {
-        // 大额下注用更震撼的音效
-        if (result.amount >= 50) {
+      if (['raise'].includes(result.action)) {
+        // 根据加注金额播放不同强度音效
+        if (result.amount >= 100) {
           this.soundManager?.play('bigBet')
         } else {
-          this.soundManager?.play('chip')
+          this.soundManager?.play('raise')
         }
+      }
+      if (result.action === 'allin') {
+        // ALL IN 专属震撼音效
+        this.soundManager?.play('allIn')
+        this.$refs.particles?.triggerAllInEffect()
       }
       if (result.action === 'peek') {
         this.soundManager?.play('peek')
@@ -310,7 +354,14 @@ export default {
       }
       if (result.action === 'showdown') {
         this.soundManager?.play('showdown')
-        this.showShowdownResult(result)
+        // 触发 VS 对决动画
+        const challengerName = this.allSeats[result.seatIndex]?.name || '玩家'
+        const targetName = this.allSeats[result.targetSeatIndex]?.name || '玩家'
+        this.$refs.particles?.triggerVSEffect(challengerName, targetName)
+        // 延迟显示结果
+        setTimeout(() => {
+          this.showShowdownResult(result)
+        }, 1500)
       }
     },
     showShowdownResult(result) {
@@ -486,6 +537,70 @@ export default {
       setTimeout(() => {
         this.actionMessages = this.actionMessages.filter(m => m.id !== msgId)
       }, 3000)
+    },
+    // 更新本地用户战绩
+    updateLocalUserStats(isWin) {
+      const user = this.userManager?.getCurrentUser()
+      if (!user) return
+      
+      const myPlayer = this.myPlayer
+      const updates = {
+        totalGames: (user.totalGames || 0) + 1,
+        wins: (user.wins || 0) + (isWin ? 1 : 0),
+        losses: (user.losses || 0) + (isWin ? 0 : 1),
+        chips: myPlayer?.chips ?? user.chips
+      }
+      
+      this.userManager.updateUser(updates)
+    },
+    // 触发胜利特效
+    triggerWinEffects(winner) {
+      if (!winner || !this.$refs.particles) return
+      
+      const handType = winner.handType?.type || winner.handType
+      const pot = this.pot
+      
+      // 屏幕中央位置
+      const centerX = window.innerWidth / 2
+      const centerY = window.innerHeight / 2 - 50
+      
+      // 牌型中文名
+      const handTypeNames = {
+        'leopard': '豹子！',
+        'straight_flush': '同花顺！',
+        'flush': '同花',
+        'straight': '顺子',
+        'pair': '对子',
+        'high_card': '散牌'
+      }
+      
+      // 根据牌型决定特效强度
+      if (handType === 'leopard' || handType === 'straight_flush') {
+        // 大牌：强烈震动 + 星星爆发 + 筹码喷射
+        this.$refs.particles.triggerShake('heavy')
+        this.$refs.particles.triggerBigHandEffect()
+        setTimeout(() => {
+          this.$refs.particles.triggerWinEffect(centerX, centerY, pot)
+          this.$refs.particles.triggerFloatText(centerX, centerY - 60, handTypeNames[handType], 'handtype')
+        }, 300)
+        setTimeout(() => {
+          this.$refs.particles.triggerFloatText(centerX, centerY + 20, `+${pot}`, 'win')
+        }, 600)
+      } else if (handType === 'flush' || handType === 'straight') {
+        // 中等牌：中度震动 + 筹码喷射
+        this.$refs.particles.triggerShake('medium')
+        this.$refs.particles.triggerWinEffect(centerX, centerY, pot)
+        setTimeout(() => {
+          this.$refs.particles.triggerFloatText(centerX, centerY, `+${pot}`, 'win')
+        }, 200)
+      } else {
+        // 普通胜利：轻度震动 + 少量筹码
+        this.$refs.particles.triggerShake('light')
+        this.$refs.particles.triggerWinEffect(centerX, centerY, Math.min(pot, 200))
+        setTimeout(() => {
+          this.$refs.particles.triggerFloatText(centerX, centerY, `+${pot}`, 'win')
+        }, 200)
+      }
     }
   }
 }

@@ -95,24 +95,59 @@ export class Room {
       bluffCaught: 0,
       bigBetWithWeak: 0,
       avgPeekRound: 0,
-      peekRoundSamples: 0
+      peekRoundSamples: 0,
+      // 新增字段
+      earlyFoldCount: 0,
+      lateFoldCount: 0,
+      smallRaiseCount: 0,
+      bigRaiseCount: 0,
+      checkRaiseCount: 0,
+      showdownInitiated: 0,
+      showdownReceived: 0,
+      wonWithoutShowdown: 0,
+      totalChipsWon: 0,
+      totalChipsLost: 0,
+      maxSingleWin: 0,
+      maxSingleLoss: 0,
+      avgBetSize: 0,
+      betSizeSamples: 0
     }
     
-    // 更新内存
-    if (updates.totalHands) profile.totalHands += updates.totalHands
-    if (updates.foldCount) profile.foldCount += updates.foldCount
-    if (updates.raiseCount) profile.raiseCount += updates.raiseCount
-    if (updates.callCount) profile.callCount += updates.callCount
-    if (updates.blindBetCount) profile.blindBetCount += updates.blindBetCount
-    if (updates.showdownWins) profile.showdownWins += updates.showdownWins
-    if (updates.showdownLosses) profile.showdownLosses += updates.showdownLosses
-    if (updates.bluffCaught) profile.bluffCaught += updates.bluffCaught
-    if (updates.bigBetWithWeak) profile.bigBetWithWeak += updates.bigBetWithWeak
+    // 更新内存 - 累加字段
+    const incrementFields = [
+      'totalHands', 'foldCount', 'raiseCount', 'callCount', 'blindBetCount',
+      'showdownWins', 'showdownLosses', 'bluffCaught', 'bigBetWithWeak',
+      'earlyFoldCount', 'lateFoldCount', 'smallRaiseCount', 'bigRaiseCount',
+      'checkRaiseCount', 'showdownInitiated', 'showdownReceived', 'wonWithoutShowdown',
+      'totalChipsWon', 'totalChipsLost'
+    ]
     
+    for (const field of incrementFields) {
+      if (updates[field]) {
+        profile[field] = (profile[field] || 0) + updates[field]
+      }
+    }
+    
+    // 最大值字段
+    if (updates.maxSingleWin && updates.maxSingleWin > (profile.maxSingleWin || 0)) {
+      profile.maxSingleWin = updates.maxSingleWin
+    }
+    if (updates.maxSingleLoss && updates.maxSingleLoss > (profile.maxSingleLoss || 0)) {
+      profile.maxSingleLoss = updates.maxSingleLoss
+    }
+    
+    // 看牌轮次滑动平均
     if (updates.peekRound) {
       const newSamples = profile.peekRoundSamples + 1
       profile.avgPeekRound = (profile.avgPeekRound * profile.peekRoundSamples + updates.peekRound) / newSamples
       profile.peekRoundSamples = newSamples
+    }
+    
+    // 下注金额滑动平均
+    if (updates.betSize) {
+      const newSamples = (profile.betSizeSamples || 0) + 1
+      profile.avgBetSize = ((profile.avgBetSize || 0) * (profile.betSizeSamples || 0) + updates.betSize) / newSamples
+      profile.betSizeSamples = newSamples
     }
     
     this.playerProfiles.set(playerName, profile)
@@ -120,7 +155,11 @@ export class Room {
     // 标记待保存
     const pending = this.pendingProfileUpdates.get(playerName) || {}
     for (const [key, value] of Object.entries(updates)) {
-      pending[key] = (pending[key] || 0) + value
+      if (key === 'maxSingleWin' || key === 'maxSingleLoss') {
+        pending[key] = Math.max(pending[key] || 0, value)
+      } else {
+        pending[key] = (pending[key] || 0) + value
+      }
     }
     this.pendingProfileUpdates.set(playerName, pending)
   }
@@ -150,14 +189,17 @@ export class Room {
     if (seatIndex === -1) return null
 
     this.clients.set(clientId, { ws, playerName, seatIndex })
-    this.game.addPlayer(seatIndex, playerName, chips, 'human')
+    
+    // 如果游戏正在进行中（非等待阶段），新玩家标记为等待下一局
+    const isGameInProgress = this.gameStarted && this.game.state.phase !== 'waiting' && this.game.state.phase !== 'ended'
+    this.game.addPlayer(seatIndex, playerName, chips, 'human', isGameInProgress)
     
     // 第一个加入的玩家是房主，记录座位
     if (this.hostSeatIndex === -1) {
       this.hostSeatIndex = seatIndex
     }
     
-    return { seatIndex }
+    return { seatIndex, waitingForNextRound: isGameInProgress }
   }
 
   // 重连玩家
@@ -197,8 +239,8 @@ export class Room {
     const client = this.clients.get(clientId)
     if (!client) return false
 
-    // 如果是断线且游戏进行中，保留座位
-    if (isDisconnect && this.gameStarted && this.game.state.phase === 'betting') {
+    // 如果是断线且游戏已开始（任何阶段），保留座位等待重连
+    if (isDisconnect && this.gameStarted) {
       const player = this.game.seats[client.seatIndex]
       if (player) {
         this.disconnectedPlayers.set(client.seatIndex, {
@@ -206,7 +248,7 @@ export class Room {
           chips: player.chips,
           disconnectedAt: Date.now()
         })
-        console.log(`⏸️ 玩家断线，保留座位: ${client.playerName} 座位${client.seatIndex}`)
+        console.log(`⏸️ 玩家断线，保留座位: ${client.playerName} 座位${client.seatIndex} (阶段: ${this.game.state.phase})`)
       }
     } else {
       this.game.removePlayer(client.seatIndex)
@@ -216,78 +258,30 @@ export class Room {
     return true
   }
 
+  // 固定的 10 个 AI 名字
+  static AI_NAMES = ['小明', '小红', '阿强', '老王', '大壮', '飞哥', '豆豆', '皮皮', '乐乐', '天天']
+
   addAI() {
     const seatIndex = this.findEmptySeat()
     if (seatIndex === -1) return null
 
-    // 随机生成网名
-    const generateNickname = () => {
-      const patterns = [
-        // 形容词+名词
-        () => {
-          const adj = ['快乐的', '忧伤的', '沉默的', '暴躁的', '温柔的', '冷酷的', '迷茫的', '孤独的', '疯狂的', '淡定的', '神秘的', '可爱的'][Math.floor(Math.random() * 12)]
-          const noun = ['小猫咪', '大灰狼', '小白兔', '老司机', '路人甲', '打工仔', '咸鱼', '柠檬', '西瓜', '土豆', '仙人掌', '向日葵'][Math.floor(Math.random() * 12)]
-          return adj + noun
-        },
-        // xx不xx
-        () => {
-          const words = ['信', '服', '行', '懂', '爱', '想', '要', '管', '问', '说'][Math.floor(Math.random() * 10)]
-          return `不${words}就不${words}`
-        },
-        // 我是xxx
-        () => {
-          const who = ['谁', '你爸爸', '传奇', '菜鸟', '大佬', '萌新', '老玩家', '路人'][Math.floor(Math.random() * 8)]
-          return `我是${who}`
-        },
-        // xxx的xxx
-        () => {
-          const a = ['隔壁', '楼下', '村口', '网吧', '街角', '深夜'][Math.floor(Math.random() * 6)]
-          const b = ['老王', '小张', '阿强', '大哥', '少年', '青年'][Math.floor(Math.random() * 6)]
-          return `${a}${b}`
-        },
-        // 纯随机词组
-        () => {
-          const words = ['夜', '风', '雨', '云', '星', '月', '梦', '心', '影', '光', '雪', '花', '海', '天', '山'][Math.floor(Math.random() * 15)]
-          const words2 = ['落', '飞', '舞', '醉', '眠', '归', '逝', '念', '忆', '寻', '望', '听', '随', '伴', '守'][Math.floor(Math.random() * 15)]
-          return `${words}${words2}${['人', '客', '者', '生', '梦'][Math.floor(Math.random() * 5)]}`
-        },
-        // 带数字
-        () => {
-          const prefix = ['牛逼', '厉害', '无敌', '最强', '第一', '超级', '王者', '青铜'][Math.floor(Math.random() * 8)]
-          const num = Math.floor(Math.random() * 999) + 1
-          return `${prefix}${num}`
-        },
-        // 英文混搭
-        () => {
-          const en = ['King', 'Pro', 'God', 'Cool', 'Nice', 'Big', 'Top', 'VIP'][Math.floor(Math.random() * 8)]
-          const cn = ['哥', '姐', '弟', '妹', '爷', '王', '神', '帝'][Math.floor(Math.random() * 8)]
-          return `${en}${cn}`
-        },
-        // 简单两字
-        () => {
-          const names = ['阿杰', '小鱼', '大壮', '老K', '飞哥', '豆豆', '皮皮', '球球', '蛋蛋', '牛牛', '乐乐', '天天'][Math.floor(Math.random() * 12)]
-          return names
-        }
-      ]
-      return patterns[Math.floor(Math.random() * patterns.length)]()
-    }
-    
-    // 生成一个未使用的昵称
+    // 获取已使用的 AI 名字
     const usedNames = new Set()
     for (const seat of this.game.seats) {
-      if (seat) usedNames.add(seat.name)
+      if (seat && seat.type === 'ai') usedNames.add(seat.name)
     }
     
-    let aiName
-    let attempts = 0
-    do {
-      aiName = generateNickname()
-      attempts++
-    } while (usedNames.has(aiName) && attempts < 20)
-    
-    if (usedNames.has(aiName)) {
-      aiName = `玩家${Math.floor(Math.random() * 9000) + 1000}`
+    // 从固定列表中找一个未使用的名字
+    let aiName = null
+    for (const name of Room.AI_NAMES) {
+      if (!usedNames.has(name)) {
+        aiName = name
+        break
+      }
     }
+    
+    // 所有 AI 名字都用完了
+    if (!aiName) return null
     
     this.aiCounter++
     this.game.addPlayer(seatIndex, aiName, 3000, 'ai')
@@ -346,7 +340,13 @@ export class Room {
 
   getPlayerList() {
     return this.game.seats
-      .map((p, i) => p ? { seatIndex: i, name: p.name, type: p.type, chips: p.chips } : null)
+      .map((p, i) => p ? { 
+        seatIndex: i, 
+        name: p.name, 
+        type: p.type, 
+        chips: p.chips,
+        waitingForNextRound: p.waitingForNextRound || false
+      } : null)
       .filter(p => p)
   }
 

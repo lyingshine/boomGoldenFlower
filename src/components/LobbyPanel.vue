@@ -422,7 +422,9 @@ export default {
           })
           const result = await response.json()
           if (result.success) {
-            avatarUrl = result.avatarUrl
+            // 生产环境头像URL需要带端口
+            const isDev = window.location.port === '3000'
+            avatarUrl = isDev ? result.avatarUrl : `${window.location.protocol}//${window.location.hostname}:3001${result.avatarUrl}`
           } else {
             alert('头像上传失败: ' + result.message)
             return

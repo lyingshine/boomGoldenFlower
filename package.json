@@ -1,6 +1,6 @@
 {
   "name": "zhajinhua-game",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Vue诈金花游戏",
   "type": "module",
   "scripts": {

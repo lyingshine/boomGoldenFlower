@@ -1,4 +1,4 @@
-hnb gv<template>
+<template>
   <div class="lobby-container">
     <!-- 氛围背景层 -->
     <div class="lobby-atmosphere">
@@ -296,17 +296,23 @@ hnb gv<template>
           <button @click="leave" class="btn btn-danger lobby-btn">🚪 离开</button>
         </div>
       </div>
+      
+      <!-- 版本号 -->
+      <div class="version-info">v{{ version }}</div>
     </div>
   </div>
 </template>
 
 <script>
+import { version } from '../../package.json'
+
 export default {
   name: 'LobbyPanel',
   props: ['networkManager', 'userManager', 'lobbyPlayers', 'roomCode'],
   emits: ['start-game', 'leave-lobby', 'players-updated', 'room-created', 'logout'],
   data() {
     return { 
+      version,
       showRoomList: false, 
       showLeaderboard: false,
       leaderboardType: 'chips',
@@ -1626,5 +1632,14 @@ export default {
 
 .btn-secondary:hover {
   background: rgba(107, 114, 128, 0.4);
+}
+
+/* 版本号 */
+.version-info {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.25);
 }
 </style>

@@ -89,8 +89,8 @@ export class NetworkManager {
         this.serverUrl = `${wsProtocol}//${host}/ws`
         console.log('  - 开发环境使用 Vite 代理:', this.serverUrl)
       } else {
-        // 生产环境：使用当前域名
-        this.serverUrl = `${wsProtocol}//${host}`
+        // 生产环境：使用 /ws 路径（配合 Nginx 反向代理）
+        this.serverUrl = `${wsProtocol}//${host}/ws`
         console.log('  - 生产环境，使用:', this.serverUrl)
       }
       

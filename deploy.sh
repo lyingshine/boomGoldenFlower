@@ -2,11 +2,11 @@
 
 PROJECT_NAME="boomGoldenFlower"
 PROJECT_DIR="/home/$PROJECT_NAME"
-GIT_URL="https://ghproxy.com/https://github.com/lyingshine/boomGoldenFlower.git"
+GIT_URL="https://github.com/lyingshine/boomGoldenFlower.git"
 WEB_ROOT="/opt/1panel/www/sites/115.159.68.212/index"  # 网站根目录，根据实际情况修改
 
 echo "=== 停止当前运行的服务器 ==="
-pkill -f "node.*server" || true
+pm2 delete boom 2>/dev/null || true
 
 echo "=== 删除旧项目目录 ==="
 rm -rf "$PROJECT_DIR"
@@ -28,5 +28,9 @@ cp -r "$PROJECT_DIR/dist/"* "$WEB_ROOT/"
 echo "前端文件已部署到 $WEB_ROOT"
 
 echo "=== 启动服务器 ==="
-nohup npm run server > server.log 2>&1 &
-echo "服务器已在后台启动，日志文件: $PROJECT_DIR/server.log"
+cd "$PROJECT_DIR"
+pm2 start server.js --name boom
+pm2 save
+echo "服务器已通过 pm2 启动"
+echo "查看日志: pm2 logs boom"
+echo "查看状态: pm2 status"

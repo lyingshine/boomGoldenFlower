@@ -184,9 +184,35 @@
         <button @click="showLeaderboard = false" class="btn btn-danger">← 返回</button>
       </div>
 
+      <!-- 创建房间设置弹窗 -->
+      <div v-if="showCreateRoomModal" class="create-room-modal">
+        <div class="create-room-content">
+          <div class="create-room-header">
+            <span class="create-room-icon">🎴</span>
+            <span class="create-room-title">房间设置</span>
+          </div>
+          <div class="create-room-field">
+            <label>底注金额</label>
+            <div class="ante-selector">
+              <button v-for="ante in anteOptions" :key="ante" 
+                      :class="['ante-option', { active: selectedAnte === ante }]"
+                      @click="selectedAnte = ante">
+                ¥{{ ante }}
+              </button>
+            </div>
+          </div>
+          <div class="create-room-actions">
+            <button @click="showCreateRoomModal = false" class="btn btn-secondary">取消</button>
+            <button @click="confirmCreateRoom" class="btn btn-primary" :disabled="isCreating">
+              {{ isCreating ? '创建中...' : '确认创建' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- 主菜单 - 高端卡片风格 -->
       <div v-if="!inRoom && !showRoomList && !showLeaderboard" class="mode-selection">
-        <button @click="createRoom" class="mode-btn create-btn" :disabled="isCreating">
+        <button @click="openCreateRoomModal" class="mode-btn create-btn" :disabled="isCreating">
           <div class="mode-card-inner">
             <div class="mode-icon-wrap">
               <span class="mode-icon">{{ isCreating ? '⏳' : '🎴' }}</span>
@@ -354,7 +380,11 @@ export default {
       // 进行中对局提示
       showActiveGameModal: false,
       activeGameRoomCode: '',
-      activeGamePromptResolve: null
+      activeGamePromptResolve: null,
+      // 创建房间设置
+      showCreateRoomModal: false,
+      selectedAnte: 10,
+      anteOptions: [5, 10, 20, 50, 100]
     }
   },
   computed: {
@@ -530,8 +560,16 @@ export default {
       
       this.isCreating = true
       const user = this.userManager.getCurrentUser()
-      await this.networkManager.createRoom(user.username)
+      await this.networkManager.createRoom(user.username, { ante: this.selectedAnte })
       this.isCreating = false
+      this.showCreateRoomModal = false
+    },
+    openCreateRoomModal() {
+      this.selectedAnte = 10
+      this.showCreateRoomModal = true
+    },
+    async confirmCreateRoom() {
+      await this.createRoom()
     },
     async loadRooms() {
       this.loading = true
@@ -1217,6 +1255,104 @@ export default {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.5);
   margin-bottom: 24px;
+}
+
+/* ===== 创建房间弹窗 ===== */
+.create-room-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+.create-room-content {
+  background: linear-gradient(165deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 24px;
+  padding: 32px;
+  min-width: 300px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.create-room-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.create-room-icon {
+  font-size: 28px;
+}
+
+.create-room-title {
+  font-size: 20px;
+  color: #ffd700;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.create-room-field {
+  margin-bottom: 24px;
+}
+
+.create-room-field label {
+  display: block;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.ante-selector {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.ante-option {
+  padding: 10px 18px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ante-option:hover {
+  background: rgba(255, 215, 0, 0.1);
+  border-color: rgba(255, 215, 0, 0.3);
+  color: #ffd700;
+}
+
+.ante-option.active {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+.create-room-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.create-room-actions .btn {
+  padding: 12px 24px;
+  font-size: 14px;
+  border-radius: 12px;
 }
 
 /* ===== 排行榜 ===== */

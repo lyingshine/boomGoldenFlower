@@ -574,7 +574,7 @@ async function handleBatchTest(clientId, data) {
 
 // 创建房间
 function handleCreateRoom(clientId, data) {
-  const { playerName } = data
+  const { playerName, ante } = data
   const roomCode = generateRoomCode()
   const client = clients.get(clientId)
   
@@ -582,19 +582,24 @@ function handleCreateRoom(clientId, data) {
   const userChips = usersCache[playerName]?.chips || 1000
   
   const room = new Room(roomCode, clientId, playerName)
+  // 设置底注
+  room.ante = ante || 10
+  room.game.state.currentBet = room.ante
+  
   room.addClient(clientId, client.ws, playerName, userChips)
   rooms.set(roomCode, room)
   
   client.roomCode = roomCode
   client.playerName = playerName
   
-  console.log(`🏠 房间创建: ${roomCode} by ${playerName}`)
+  console.log(`🏠 房间创建: ${roomCode} by ${playerName}, 底注: ${room.ante}`)
   
   send(client.ws, {
     type: 'room_created',
     roomCode,
     seatIndex: room.getSeatIndex(clientId),
-    players: room.getPlayerList()
+    players: room.getPlayerList(),
+    ante: room.ante
   })
 }
 
@@ -819,7 +824,7 @@ function handleStartGame(clientId) {
     return
   }
   
-  const result = room.game.startRound(room.hostSeatIndex)
+  const result = room.game.startRound(room.hostSeatIndex, room.ante || 10)
   if (!result.success) {
     send(client.ws, { type: 'start_failed', message: result.error })
     return

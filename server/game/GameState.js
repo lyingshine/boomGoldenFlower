@@ -27,11 +27,12 @@ export class GameState {
     return false
   }
 
-  startRound() {
+  startRound(ante = 10) {
     this.round++
     this.phase = 'dealing'
     this.pot = 0
-    this.currentBet = 10
+    this.currentBet = ante
+    this.ante = ante  // 保存底注配置
     this.showdownReady = false
     this.winner = null
     this.firstRoundComplete = false // 新一局开始，重置第一轮状态

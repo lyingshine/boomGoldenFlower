@@ -127,6 +127,15 @@ export default {
     },
     blindMinAmount(val) {
       if (this.blindBetAmount < val) this.blindBetAmount = val
+    },
+    // 游戏结束时重置下注金额
+    gamePhase(val) {
+      if (val === 'ended' || val === 'waiting') {
+        this.callBetAmount = this.callAmount || 10
+        this.blindBetAmount = this.blindMinAmount || 10
+        this.showdownMode = false
+        this.$emit('showdown-mode-change', false)
+      }
     }
   },
   methods: {

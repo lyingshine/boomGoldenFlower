@@ -358,6 +358,17 @@ export default {
         const challengerName = this.allSeats[result.seatIndex]?.name || '玩家'
         const targetName = this.allSeats[result.targetSeatIndex]?.name || '玩家'
         this.$refs.particles?.triggerVSEffect(challengerName, targetName)
+        
+        // 如果我是焖牌赢家，被开牌后要看到自己的手牌
+        if (result.winnerForcePeeked && result.winnerSeatIndex === this.mySeatIndex && result.winnerCards) {
+          // 更新本地玩家的手牌和看牌状态
+          const myPlayer = this.allSeats[this.mySeatIndex]
+          if (myPlayer) {
+            myPlayer.cards = result.winnerCards
+            myPlayer.hasPeeked = true
+          }
+        }
+        
         // 延迟显示结果
         setTimeout(() => {
           this.showShowdownResult(result)

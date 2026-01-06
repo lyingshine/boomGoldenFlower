@@ -42,12 +42,12 @@ export class GameEngine {
     return this.seats.filter(p => p && !p.folded && !p.isAllIn)
   }
 
-  startRound(hostSeatIndex = -1) {
+  startRound(hostSeatIndex = -1, ante = 10) {
     const players = this.seats.filter(p => p)
     if (players.length < 1) return { success: false, error: '没有玩家' }
 
     this.deck = new Deck()
-    this.state.startRound()
+    this.state.startRound(ante)
     players.forEach(p => {
       p.reset()
       // 新一轮开始，清除等待状态
@@ -417,6 +417,12 @@ export class GameEngine {
     loser.showdownBy = challenger.id  // 记录是被谁开的牌
     loser.hasActed = true
     
+    // 如果赢家是焖牌状态，开牌后自动变为已看牌
+    if (!winner.hasPeeked) {
+      winner.hasPeeked = true
+      winner.forcePeekedByShowdown = true  // 标记是被开牌强制看牌的
+    }
+    
     // 记录开牌双方关系，用于结束时显示牌
     challenger.showdownWith = Number(targetSeatIndex)
     target.showdownWith = Number(challenger.id)
@@ -461,7 +467,9 @@ export class GameEngine {
       cost: showdownCost,
       challengerHand,
       targetHand,
-      targetCards: target.hand.toJSON()  // 返回被开牌玩家的手牌
+      targetCards: target.hand.toJSON(),  // 返回被开牌玩家的手牌
+      winnerCards: winner.hand.toJSON(),  // 返回赢家的手牌（用于焖牌赢家看自己的牌）
+      winnerForcePeeked: winner.forcePeekedByShowdown || false  // 标记赢家是否被强制看牌
     }
   }
 
@@ -844,39 +852,44 @@ export class GameEngine {
     const avgDanger = opponentProfiles.reduce((sum, o) => sum + o.analysis.dangerLevel, 0) / Math.max(opponentProfiles.length, 1)
     
     // ========== 决定是否看牌 ==========
-    let peekChance = 0.25
+    let peekChance = 0.3  // 基础看牌概率提高
     
-    // 轮次越多，越该看牌
-    peekChance += round * 0.1
+    // 轮次越多，越该看牌（加大权重）
+    peekChance += round * 0.15
     
-    // 筹码压力
-    if (chipPressure > 0.3) peekChance += 0.25
-    if (chipPressure > 0.5) peekChance += 0.3
+    // 筹码压力大，必须看牌
+    if (chipPressure > 0.2) peekChance += 0.3
+    if (chipPressure > 0.4) peekChance += 0.4
     
     // 对手威胁度高，先看牌
-    if (avgDanger > 0.6) peekChance += 0.2
+    if (avgDanger > 0.5) peekChance += 0.25
     
     // 有疯狂型玩家，需要看牌应对
-    if (maniacCount > 0) peekChance += 0.15
+    if (maniacCount > 0) peekChance += 0.2
     
-    // 对手诈唬概率高，可以继续焖
-    if (avgBluffLikelihood > 0.4) peekChance -= 0.15
+    // 对手诈唬概率高，可以继续焖（但减少幅度）
+    if (avgBluffLikelihood > 0.4) peekChance -= 0.1
     
-    peekChance = Math.max(0.1, Math.min(0.9, peekChance))
+    peekChance = Math.max(0.15, Math.min(0.95, peekChance))
     
     if (Math.random() < peekChance) {
       return { action: 'peek' }
     }
 
     // ========== 继续焖牌 ==========
-    // 针对岩石型玩家：焖牌加注逼他弃牌
-    if (rockCount > 0 && player.chips > callAmount + 20) {
+    // 后期轮次不要盲目焖牌加注
+    if (round >= 3) {
+      return { action: 'blind', amount: callAmount }
+    }
+    
+    // 针对岩石型玩家：焖牌加注逼他弃牌（降低概率）
+    if (rockCount > 0 && player.chips > callAmount + 20 && round <= 2) {
       const avgFoldPressure = opponentProfiles
         .filter(o => o.analysis.type === 'rock')
         .reduce((sum, o) => sum + o.analysis.foldPressure, 0) / rockCount
       
-      if (Math.random() < avgFoldPressure * 0.6) {
-        const raiseAmount = 15 + Math.floor(Math.random() * 20)
+      if (Math.random() < avgFoldPressure * 0.4) {
+        const raiseAmount = 10 + Math.floor(Math.random() * 15)
         return { action: 'blind', amount: callAmount + raiseAmount }
       }
     }
@@ -887,9 +900,9 @@ export class GameEngine {
       return { action: 'blind', amount: callAmount }
     }
     
-    // 普通情况：小概率加注诈唬
-    if (Math.random() < 0.2 && player.chips > callAmount + 15) {
-      const raiseAmount = 10 + Math.floor(Math.random() * 20)
+    // 普通情况：小概率加注（降低概率）
+    if (Math.random() < 0.1 && player.chips > callAmount + 15 && round <= 2) {
+      const raiseAmount = 10 + Math.floor(Math.random() * 10)
       return { action: 'blind', amount: callAmount + raiseAmount }
     }
     
@@ -964,34 +977,76 @@ export class GameEngine {
     }
     
     // ========== 弱牌 ==========
-    // 对岩石型：诈唬逼弃牌
-    if (rockCount > 0 && avgFoldPressure > 0.55 && player.chips > callAmount + 25) {
-      if (Math.random() < avgFoldPressure * 0.5) {
-        return { action: 'raise', amount: 20 + Math.floor(Math.random() * 15) }
+    // 综合分析局势
+    const potSize = this.state.pot
+    const investedRatio = player.currentBet / (player.chips + player.currentBet)  // 已投入比例
+    const potOdds = callAmount / (potSize + callAmount)  // 底池赔率
+    
+    // 分析对手行为强度
+    let opponentAggression = 0
+    for (const opp of opponentProfiles) {
+      const p = opp.player
+      // 对手看牌后大额下注 = 高威胁
+      if (p.hasPeeked && p.lastBetAmount > 30) opponentAggression += 0.4
+      else if (p.hasPeeked && p.lastBetAmount > 20) opponentAggression += 0.25
+      // 对手焖牌大额下注 = 中等威胁（可能诈唬）
+      else if (!p.hasPeeked && p.lastBetAmount > 25) opponentAggression += 0.15
+      // 对手一直跟注不加注 = 低威胁
+      else if (p.lastBetAmount <= this.state.ante) opponentAggression += 0.05
+    }
+    opponentAggression = opponentAggression / Math.max(opponentProfiles.length, 1)
+    
+    // 对手诈唬可能性
+    const avgBluffLikelihood = opponentProfiles.reduce((sum, o) => sum + o.analysis.bluffLikelihood, 0) / Math.max(opponentProfiles.length, 1)
+    
+    // ========== 弃牌决策 ==========
+    let foldChance = 0.3  // 基础弃牌概率
+    
+    // 对手攻击性强，弃牌概率大增
+    foldChance += opponentAggression * 0.5
+    
+    // 对手威胁度高
+    foldChance += avgDanger * 0.3
+    
+    // 筹码压力
+    foldChance += chipPressure * 0.4
+    
+    // 已投入太多沉没成本，但散牌继续打只会亏更多
+    if (investedRatio > 0.3) foldChance += 0.2
+    
+    // 底池赔率差（需要投入太多）
+    if (potOdds > 0.35) foldChance += 0.15
+    
+    // 对跟注站：绝不诈唬，直接弃牌
+    if (callingStationCount > 0) {
+      foldChance += 0.3
+    }
+    
+    // 对手可能在诈唬，降低弃牌概率
+    if (avgBluffLikelihood > 0.4) foldChance -= 0.2
+    if (avgBluffLikelihood > 0.5) foldChance -= 0.15
+    
+    // 底池赔率很好（便宜看看）
+    if (potOdds < 0.15 && chipPressure < 0.1) {
+      foldChance -= 0.25
+    }
+    
+    foldChance = Math.max(0.1, Math.min(0.9, foldChance))
+    
+    if (Math.random() < foldChance) {
+      return { action: 'fold' }
+    }
+    
+    // ========== 不弃牌时的决策 ==========
+    // 对岩石型：小概率诈唬（只在对手可能弃牌时）
+    if (rockCount > 0 && avgFoldPressure > 0.6 && player.chips > callAmount + 20) {
+      if (Math.random() < avgFoldPressure * 0.25) {
+        return { action: 'raise', amount: 15 + Math.floor(Math.random() * 10) }
       }
     }
     
-    // 对跟注站：绝不诈唬，直接弃牌
-    if (callingStationCount > 0 && chipPressure > 0.2) {
-      return { action: 'fold' }
-    }
-    
-    // 压力大就弃牌
-    if (chipPressure > 0.35 && avgDanger > 0.5) {
-      return { action: 'fold' }
-    }
-    
-    // 底池赔率够好就跟
-    const potOdds = callAmount / (this.state.pot + callAmount)
-    if (potOdds < 0.3) {
-      return { action: 'call' }
-    }
-    
-    if (chipPressure < 0.25) {
-      return { action: 'call' }
-    }
-    
-    return { action: 'fold' }
+    // 默认跟注（已经决定不弃牌了）
+    return { action: 'call' }
   }
 
   // ========== 开牌决策V2 ==========

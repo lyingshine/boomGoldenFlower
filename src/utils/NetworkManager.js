@@ -426,10 +426,10 @@ export class NetworkManager {
   }
 
   // 创建房间
-  async createRoom(playerName) {
+  async createRoom(playerName, options = {}) {
     if (!this.isConnected) await this.connect()
     localStorage.setItem('playerName', playerName)
-    this.send({ type: 'create_room', playerName })
+    this.send({ type: 'create_room', playerName, ante: options.ante || 10 })
   }
 
   // 加入房间

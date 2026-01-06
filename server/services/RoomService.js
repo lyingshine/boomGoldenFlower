@@ -1,40 +1,17 @@
 /**
  * 房间服务
- * 处理房间创建、加入、离开等逻辑
+ * 统一导出房间相关功能
  */
-import { Room } from '../game/Room.js'
-import { saveUserData, getUsersCache } from './UserService.js'
+import { getUsersCache } from './UserService.js'
+import { getClients, generateId, send } from './room/ClientManager.js'
+import { getRooms, generateRoomCode, getRoomList, verifyRoom, createRoomInstance, deleteRoom } from './room/RoomManager.js'
+import { updateUserChipsOnLeave, updateUserChips, startDisconnectChecker as startChecker } from './room/ChipsManager.js'
 
-// 房间管理
-const rooms = new Map()
-// 客户端管理
-const clients = new Map()
+// 重新导出基础功能
+export { getClients, generateId, send, getRooms, getRoomList, verifyRoom, updateUserChips }
 
-// 获取房间和客户端 Map
-export function getRooms() {
-  return rooms
-}
-
-export function getClients() {
-  return clients
-}
-
-// 生成房间号
-export function generateRoomCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase()
-}
-
-// 生成客户端ID
-export function generateId() {
-  return Math.random().toString(36).substring(2, 15)
-}
-
-// 发送消息
-export function send(ws, data) {
-  if (ws.readyState === 1) {
-    ws.send(JSON.stringify(data))
-  }
-}
+const rooms = getRooms()
+const clients = getClients()
 
 // 创建房间
 export function createRoom(clientId, playerName, ante = 10) {
@@ -42,14 +19,15 @@ export function createRoom(clientId, playerName, ante = 10) {
   const roomCode = generateRoomCode()
   const client = clients.get(clientId)
   
-  const userChips = usersCache[playerName]?.chips || 1000
+  const user = usersCache[playerName]
+  const userChips = user?.chips || 1000
+  const avatarUrl = user?.avatarUrl || null
   
-  const room = new Room(roomCode, clientId, playerName)
+  const room = createRoomInstance(roomCode, clientId, playerName)
   room.ante = ante
   room.game.state.currentBet = room.ante
   
-  room.addClient(clientId, client.ws, playerName, userChips)
-  rooms.set(roomCode, room)
+  room.addClient(clientId, client.ws, playerName, userChips, avatarUrl)
   
   client.roomCode = roomCode
   client.playerName = playerName
@@ -74,9 +52,11 @@ export function joinRoom(clientId, roomCode, playerName) {
     return { success: false, message: '房间不存在' }
   }
   
-  const userChips = usersCache[playerName]?.chips || 1000
+  const user = usersCache[playerName]
+  const userChips = user?.chips || 1000
+  const avatarUrl = user?.avatarUrl || null
   
-  const result = room.addClient(clientId, client.ws, playerName, userChips)
+  const result = room.addClient(clientId, client.ws, playerName, userChips, avatarUrl)
   if (!result) {
     return { success: false, message: '房间已满' }
   }
@@ -98,6 +78,7 @@ export function joinRoom(clientId, roomCode, playerName) {
     room
   }
 }
+
 
 // 离开房间
 export function leaveRoom(clientId) {
@@ -141,44 +122,12 @@ export function leaveRoom(clientId) {
   client.roomCode = null
   
   if (wasHost || room.clients.size === 0) {
-    rooms.delete(roomCode)
+    deleteRoom(roomCode)
     console.log(`🚪 房间关闭: ${roomCode}`)
     return { closed: true, roomCode, playerName, room }
   }
   
   return { closed: false, roomCode, playerName, room, players: room.getPlayerList() }
-}
-
-// 离开房间时更新用户筹码
-export function updateUserChipsOnLeave(playerName, seatIndex, room, isDisconnect) {
-  const usersCache = getUsersCache()
-  if (!playerName || !usersCache[playerName]) return
-  if (seatIndex === -1 || seatIndex === undefined) return
-  
-  const player = room.game.seats[seatIndex]
-  if (!player || player.type !== 'human') return
-  
-  if (!isDisconnect) {
-    usersCache[playerName].chips = player.chips
-    saveUserData(playerName)
-    console.log(`💰 主动离开，更新筹码: ${playerName} -> ${player.chips}`)
-  } else {
-    console.log(`⏸️ 断线，保留筹码等待重连: ${playerName}`)
-  }
-}
-
-// 获取房间列表
-export function getRoomList() {
-  return Array.from(rooms.values()).map(r => r.getInfo())
-}
-
-// 验证房间
-export function verifyRoom(roomCode) {
-  const room = rooms.get(roomCode)
-  return {
-    exists: !!room,
-    roomInfo: room ? room.getInfo() : null
-  }
 }
 
 // 添加AI
@@ -192,6 +141,22 @@ export function addAI(clientId) {
   if (result) {
     console.log(`🤖 添加AI: ${result.name} 座位${result.seatIndex}`)
     return { ...result, players: room.getPlayerList(), room }
+  }
+  return null
+}
+
+// 更新底注
+export function updateAnte(clientId, ante) {
+  const client = clients.get(clientId)
+  const room = rooms.get(client?.roomCode)
+  
+  if (!room || !room.isHost(clientId)) return null
+  
+  if (ante !== undefined && ante > 0) {
+    room.ante = ante
+    room.game.state.currentBet = ante
+    console.log(`💰 更新房间底注: ¥${ante}`)
+    return { ante: room.ante, room }
   }
   return null
 }
@@ -210,33 +175,7 @@ export function removeAI(clientId, seatIndex) {
   return null
 }
 
-// 更新用户筹码（游戏中）
-export function updateUserChips(room) {
-  const usersCache = getUsersCache()
-  room.game.seats.forEach(player => {
-    if (player && player.type === 'human' && usersCache[player.name]) {
-      usersCache[player.name].chips = player.chips
-      saveUserData(player.name)
-    }
-  })
-}
-
-// 定期检查断线超时
+// 启动断线检查器
 export function startDisconnectChecker() {
-  const usersCache = getUsersCache()
-  setInterval(() => {
-    rooms.forEach((room) => {
-      room.disconnectedPlayers.forEach((info, seatIndex) => {
-        if (Date.now() - info.disconnectedAt >= room.reconnectTimeout) {
-          if (info.playerName && usersCache[info.playerName]) {
-            usersCache[info.playerName].chips = info.chips
-            saveUserData(info.playerName)
-            console.log(`⏰ 重连超时，更新筹码: ${info.playerName} -> ${info.chips}`)
-          }
-          room.disconnectedPlayers.delete(seatIndex)
-          room.game.removePlayer(seatIndex)
-        }
-      })
-    })
-  }, 30000)
+  startChecker(rooms)
 }

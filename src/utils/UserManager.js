@@ -67,17 +67,37 @@ export class UserManager {
       return { success: false, message: '网络未连接' }
     }
     
-    try {
-      const result = await this.networkManager.login(username, password)
-      
-      if (result.success && result.user) {
-        this.currentUser = result.user
-        this.saveCurrentUser()
+    // Safari 兼容：增加重试机制
+    const maxRetries = 2
+    let lastError = null
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔐 登录尝试 ${attempt}/${maxRetries}`)
+        
+        const result = await this.networkManager.login(username, password)
+        
+        if (result.success && result.user) {
+          this.currentUser = result.user
+          this.saveCurrentUser()
+          console.log('✅ 登录成功')
+        }
+        
+        return result
+      } catch (e) {
+        lastError = e
+        console.error(`❌ 登录尝试 ${attempt} 失败:`, e.message)
+        
+        if (attempt < maxRetries) {
+          console.log('⏳ 等待后重试...')
+          await new Promise(r => setTimeout(r, 1000))
+        }
       }
-      
-      return result
-    } catch (e) {
-      return { success: false, message: '网络错误' }
+    }
+    
+    return { 
+      success: false, 
+      message: lastError?.message || '网络错误，请重试' 
     }
   }
 

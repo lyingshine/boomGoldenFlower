@@ -3,7 +3,8 @@
     <!-- 主卡片 -->
     <div class="main-info" :class="{ 'active': isCurrentTurn, 'folded': player.folded }">
       <div class="player-avatar" :class="[avatarColorClass, { 'my-avatar': isMe }]" @click="showChips = !showChips">
-        {{ avatarEmoji }}
+        <img v-if="avatarUrl" :src="avatarUrl" class="avatar-img" />
+        <span v-else>{{ avatarEmoji }}</span>
         <!-- 点击显示资产 -->
         <div v-if="showChips" class="chips-tooltip">💰 ¥{{ player.chips }}</div>
       </div>
@@ -26,7 +27,8 @@ export default {
     player: { type: Object, required: true },
     seatIndex: { type: Number, required: true },
     isMe: { type: Boolean, default: false },
-    isCurrentTurn: { type: Boolean, default: false }
+    isCurrentTurn: { type: Boolean, default: false },
+    currentUser: { type: Object, default: null }
   },
   data() {
     return {
@@ -37,8 +39,16 @@ export default {
     displayName() {
       return this.player.name?.replace(/🎮|🤖/g, '').trim() || '玩家'
     },
+    avatarUrl() {
+      // 如果是自己，使用当前用户的头像
+      if (this.isMe && this.currentUser?.avatarUrl) {
+        return this.currentUser.avatarUrl
+      }
+      // 否则使用玩家数据中的头像
+      return this.player.avatarUrl || null
+    },
     avatarEmoji() {
-      if (this.isMe) return '😎'
+      if (this.isMe) return this.currentUser?.avatar || '😎'
       // AI也用人物表情，看起来像真人
       const humanEmojis = ['😊', '😄', '🙂', '😏', '🤔', '😌', '🧐', '😁', '🤨', '😤', '🙄', '😶']
       // 根据座位索引固定一个表情，保持一致性
@@ -98,6 +108,13 @@ export default {
   font-size: 28px;
   cursor: pointer;
   transition: transform 0.2s;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .player-avatar:hover {

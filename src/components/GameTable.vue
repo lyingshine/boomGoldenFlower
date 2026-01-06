@@ -83,6 +83,7 @@
               :seat-index="index"
               :is-me="index === mySeatIndex"
               :is-current-turn="currentPlayerIndex === index && gamePhase === 'betting'"
+              :current-user="currentUser"
             />
             
             <!-- 手牌 -->
@@ -143,7 +144,7 @@ import PlayerComponent from './PlayerComponent.vue'
 export default {
   name: 'GameTable',
   components: { PlayerComponent },
-  props: ['allSeats', 'currentPlayerIndex', 'pot', 'gamePhase', 'winner', 'gameStatus', 'mySeatIndex', 'isLoading', 'loadingText', 'showdownResult', 'showdownMode', 'showdownPreview', 'chatMessages', 'actionMessages'],
+  props: ['allSeats', 'currentPlayerIndex', 'pot', 'gamePhase', 'winner', 'gameStatus', 'mySeatIndex', 'isLoading', 'loadingText', 'showdownResult', 'showdownMode', 'showdownPreview', 'chatMessages', 'actionMessages', 'currentUser'],
   emits: ['card-click', 'player-click'],
   data() {
     return {

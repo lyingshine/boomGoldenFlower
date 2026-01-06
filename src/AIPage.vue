@@ -5,10 +5,14 @@
     :ai-stats="aiStats"
     :hand-calibrations="handCalibrations"
     :player-strategies="playerStrategies"
+    :personality-adjustments="personalityAdjustments"
+    :global-adjustments="globalAdjustments"
     @close="goBack"
     @load-ai-detail="loadAIDetail"
     @clear-ai-data="clearAIData"
     @start-batch-test="startBatchTest"
+    @load-replays="loadReplays"
+    @load-replay-detail="loadReplayDetail"
   />
 </template>
 
@@ -25,12 +29,15 @@ export default {
       playerProfiles: [],
       aiStats: [],
       handCalibrations: [],
-      playerStrategies: []
+      playerStrategies: [],
+      personalityAdjustments: {},
+      globalAdjustments: null
     }
   },
   async mounted() {
     this.networkManager = new NetworkManager()
     await this.loadProfiles()
+    await this.loadReplays(1)
     this.refreshTimer = setInterval(() => this.loadProfiles(), 2000)
   },
   beforeUnmount() {
@@ -46,6 +53,8 @@ export default {
         this.aiStats = data.aiStats || []
         this.handCalibrations = data.handCalibrations || []
         this.playerStrategies = data.playerStrategies || []
+        this.personalityAdjustments = data.personalityAdjustments || {}
+        this.globalAdjustments = data.globalAdjustments || null
       } catch (e) {
         console.error('加载档案失败:', e)
       }
@@ -83,6 +92,23 @@ export default {
         this.networkManager.send({ type: 'batch_test', ...config })
       } catch (e) {
         console.error('批量测试失败:', e)
+      }
+    },
+    async loadReplays(page = 1) {
+      try {
+        await this.networkManager.connect()
+        const data = await this.networkManager.getGameReplays(page)
+        this.$refs.monitor?.updateReplays(data)
+      } catch (e) {
+        console.error('加载复盘列表失败:', e)
+      }
+    },
+    async loadReplayDetail(id) {
+      try {
+        const data = await this.networkManager.getGameReplayDetail(id)
+        this.$refs.monitor?.updateReplayDetail(data.detail)
+      } catch (e) {
+        console.error('加载复盘详情失败:', e)
       }
     }
   }

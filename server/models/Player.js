@@ -62,6 +62,7 @@ export class Player {
       name: this.name,
       chips: this.chips,
       type: this.type,
+      avatarUrl: this.avatarUrl || null,
       currentBet: this.currentBet,
       lastBetAmount: this.lastBetAmount,
       lastBetBlind: this.lastBetBlind,

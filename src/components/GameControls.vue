@@ -1,16 +1,5 @@
 <template>
     <div class="game-controls" :class="{ 'my-turn': isMyTurn && gamePhase === 'betting' }">
-      <!-- 等待阶段 -->
-      <template v-if="gamePhase === 'waiting'">
-        <button v-if="isHost" @click="$emit('start-game')" class="btn btn-primary btn-large">
-          🃏 发牌开始
-        </button>
-        <div v-else class="waiting-message">
-          <span class="waiting-dot"></span>
-          等待房主发牌
-        </div>
-      </template>
-
       <!-- 下注阶段 -->
       <template v-if="gamePhase === 'betting' && myPlayer && !myPlayer.folded">
         <!-- 圆形按钮：看牌（左下角）和弃牌（右下角） -->
@@ -70,24 +59,39 @@
         </div>
         
         <!-- 不是我的回合 -->
-        <div v-if="!isMyTurn" class="wait-controls">
+        <div v-if="!isMyTurn" class="unified-bottom-control">
           <div class="waiting-message">
             <span class="waiting-dot"></span>
-            等待其他玩家
+            等待其他玩家操作
           </div>
         </div>
       </template>
 
       <!-- 已弃牌 -->
       <template v-if="gamePhase === 'betting' && myPlayer && myPlayer.folded">
-        <div class="folded-message">
-          🚫 已弃牌，等待本轮结束
+        <div class="unified-bottom-control">
+          <div class="folded-message">
+            🚫 已弃牌，等待本轮结束
+          </div>
         </div>
       </template>
 
-      <!-- 游戏结束 -->
+      <!-- 等待阶段 - 统一到底部 -->
+      <template v-if="gamePhase === 'waiting'">
+        <div class="unified-bottom-control">
+          <button v-if="isHost" @click="$emit('start-game')" class="btn btn-primary btn-large">
+            🃏 发牌开始
+          </button>
+          <div v-else class="waiting-message">
+            <span class="waiting-dot"></span>
+            等待房主发牌
+          </div>
+        </div>
+      </template>
+
+      <!-- 游戏结束 - 统一到底部 -->
       <template v-if="gamePhase === 'showdown' || gamePhase === 'ended'">
-        <div class="end-controls">
+        <div class="unified-bottom-control">
           <button v-if="isHost" @click="$emit('start-game')" class="btn btn-primary btn-large">
             🃏 再来一局
           </button>
@@ -350,7 +354,24 @@ export default {
   min-height: 140px;
 }
 
-/* 等待其他玩家 - 固定底部 */
+/* 统一的底部控制区域 - 所有状态都在这里 */
+.unified-bottom-control {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px 20px;
+  background: linear-gradient(180deg, 
+    rgba(0, 0, 0, 0) 0%, 
+    rgba(0, 0, 0, 0.4) 100%);
+  backdrop-filter: blur(8px);
+  min-height: 100px;
+}
+
+/* 等待其他玩家 - 使用统一样式 */
 .wait-controls {
   position: fixed;
   bottom: 0;
@@ -365,7 +386,7 @@ export default {
   backdrop-filter: blur(8px);
 }
 
-/* 游戏结束 - 固定底部 */
+/* 游戏结束 - 使用统一样式 */
 .end-controls {
   position: fixed;
   bottom: 0;
@@ -714,6 +735,14 @@ export default {
 
 /* 移动端适配 */
 @media (max-width: 768px) {
+  .left-button {
+    left: 60px;
+  }
+  
+  .right-button {
+    right: 60px;
+  }
+  
   .btn-circle {
     width: 55px;
     height: 55px;

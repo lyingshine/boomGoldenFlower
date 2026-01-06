@@ -51,6 +51,13 @@ export class NetworkManager {
       const loc = window.location
       let host = loc.host || loc.hostname
       
+      console.log('🔍 URL 调试信息:')
+      console.log('  - location.href:', loc.href)
+      console.log('  - location.host:', loc.host)
+      console.log('  - location.hostname:', loc.hostname)
+      console.log('  - location.port:', loc.port)
+      console.log('  - location.protocol:', loc.protocol)
+      
       // iOS PWA 模式下可能获取不到 host
       if (!host || host === '') {
         // 尝试从 href 解析
@@ -58,17 +65,39 @@ export class NetworkManager {
         const match = href.match(/^https?:\/\/([^\/]+)/)
         if (match) {
           host = match[1]
+          console.log('  - 从 href 解析 host:', host)
         } else {
-          host = 'localhost'
+          host = 'localhost:3001'
+          console.log('  - 使用默认 host:', host)
         }
       }
       
+      // 开发环境：根据访问方式决定连接地址
+      // 生产环境：使用当前域名
+      const isDev = import.meta.env.DEV
       const isSecure = loc.protocol === 'https:'
       const wsProtocol = isSecure ? 'wss:' : 'ws:'
-      this.serverUrl = `${wsProtocol}//${host}/ws`
+      
+      console.log('  - isDev:', isDev)
+      console.log('  - isSecure:', isSecure)
+      console.log('  - wsProtocol:', wsProtocol)
+      
+      if (isDev) {
+        // 开发环境：使用 Vite 代理路径 /ws
+        // 这样可以绕过 iOS Safari 的 WebSocket 限制
+        const baseUrl = `${loc.protocol}//${host}`
+        this.serverUrl = `${wsProtocol}//${host}/ws`
+        console.log('  - 开发环境使用 Vite 代理:', this.serverUrl)
+      } else {
+        // 生产环境：使用当前域名
+        this.serverUrl = `${wsProtocol}//${host}`
+        console.log('  - 生产环境，使用:', this.serverUrl)
+      }
+      
+      console.log('✅ 最终 WebSocket URL:', this.serverUrl)
     } catch (e) {
       console.error('初始化 serverUrl 失败:', e)
-      this.serverUrl = 'wss://localhost/ws'
+      this.serverUrl = 'ws://localhost:3001'
     }
   }
 
@@ -121,22 +150,26 @@ export class NetworkManager {
     // 如果已经连接且有clientId，直接返回
     // Safari 兼容：使用数字 1 代替 WebSocket.OPEN
     if (this.isConnected && this.clientId && this.ws && this.ws.readyState === 1) {
+      console.log('✅ 已有活跃连接，复用')
       return Promise.resolve()
     }
     
     // 如果正在连接中，等待连接完成
     if (this._connectingPromise) {
+      console.log('⏳ 等待现有连接完成')
       return this._connectingPromise
     }
     
     // iOS Safari/PWA: 每次连接前重新获取 URL，清理僵尸状态
     this._initServerUrl()
     this.isConnected = false
-    console.log('🔌 正在连接:', this.serverUrl)
+    console.log('🔌 开始新连接:', this.serverUrl)
+    console.log('🔍 浏览器信息:', navigator.userAgent)
     
     this._connectingPromise = new Promise((resolve, reject) => {
       let resolved = false
       let timeoutId = null
+      let connectionStartTime = Date.now()
       
       const cleanup = () => {
         if (timeoutId) clearTimeout(timeoutId)
@@ -146,6 +179,8 @@ export class NetworkManager {
       const doResolve = () => {
         if (resolved) return
         resolved = true
+        const duration = Date.now() - connectionStartTime
+        console.log(`✅ 连接成功，耗时 ${duration}ms`)
         cleanup()
         resolve()
       }
@@ -153,6 +188,8 @@ export class NetworkManager {
       const doReject = (error) => {
         if (resolved) return
         resolved = true
+        const duration = Date.now() - connectionStartTime
+        console.error(`❌ 连接失败，耗时 ${duration}ms，原因:`, error.message)
         cleanup()
         reject(error)
       }
@@ -161,34 +198,57 @@ export class NetworkManager {
         // 关闭旧连接
         if (this.ws) {
           try {
+            console.log('🧹 清理旧连接')
             this.ws.onclose = null
             this.ws.onerror = null
             this.ws.onmessage = null
             this.ws.onopen = null
             this.ws.close()
           } catch (e) {
-            // Safari 可能在某些状态下抛出异常
+            console.warn('清理旧连接时出错:', e)
           }
           this.ws = null
         }
         
-        console.log('🔌 正在连接:', this.serverUrl)
+        console.log('🔌 创建 WebSocket 连接...')
         this.ws = new WebSocket(this.serverUrl)
         
         this.ws.onopen = () => {
-          console.log('✅ 已连接到游戏服务器')
+          console.log('✅ WebSocket 已打开，等待服务器确认...')
           this.isConnected = true
           this.reconnectAttempts = 0
           if (this.onConnected) this.onConnected()
+          
+          // Safari 兼容：主动发送心跳确保连接活跃
+          setTimeout(() => {
+            if (this.ws && this.ws.readyState === 1 && !this.clientId) {
+              console.log('💓 发送心跳检测')
+              try {
+                this.ws.send(JSON.stringify({ type: 'ping' }))
+              } catch (e) {
+                console.warn('心跳发送失败:', e)
+              }
+            }
+          }, 500)
         }
         
         this.ws.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data)
+            console.log('📨 收到消息:', message.type, message)
             this.handleMessage(message)
             // 收到 clientId 后才算连接完成
             if (message.type === 'connected' && message.clientId) {
-              doResolve()
+              console.log('🆔 收到 clientId:', message.clientId)
+              // 确保 clientId 已设置后再 resolve
+              setTimeout(() => {
+                if (this.clientId) {
+                  doResolve()
+                } else {
+                  console.warn('⚠️ clientId 未正确设置')
+                  doReject(new Error('clientId 未设置'))
+                }
+              }, 50)
             }
           } catch (error) {
             console.error('消息解析错误:', error)
@@ -196,27 +256,55 @@ export class NetworkManager {
         }
         
         this.ws.onclose = (event) => {
-          console.log('❌ 与服务器断开连接', event.code, event.reason)
+          console.log('❌ WebSocket 关闭', {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean
+          })
           this.isConnected = false
           this.clientId = null
           if (this.onDisconnected) this.onDisconnected()
-          doReject(new Error('连接关闭'))
+          // 只有在还没有 resolve 的情况下才 reject
+          if (!resolved) {
+            doReject(new Error(`连接关闭 (code: ${event.code})`))
+          }
           this.tryReconnect()
         }
         
         this.ws.onerror = (error) => {
-          console.error('WebSocket错误:', error)
+          console.error('❌ WebSocket 错误:', error)
+          console.error('错误详情:', {
+            type: error.type,
+            target: error.target?.readyState,
+            url: this.serverUrl
+          })
           this.isConnected = false
           // Safari 有时只触发 onerror 不触发 onclose
-          doReject(new Error('连接错误'))
+          if (!resolved) {
+            doReject(new Error('WebSocket 连接错误'))
+          }
         }
         
+        // Safari 需要更长的超时时间
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+        const timeout = isSafari ? 15000 : 10000
+        console.log(`⏱️ 设置超时: ${timeout}ms (Safari: ${isSafari})`)
+        
         timeoutId = setTimeout(() => {
-          doReject(new Error('连接超时'))
-        }, 10000) // iOS Safari/PWA 可能需要更长时间
+          console.error('⏱️ 连接超时')
+          if (this.ws && this.ws.readyState !== 1) {
+            console.log('关闭超时的连接')
+            try {
+              this.ws.close()
+            } catch (e) {
+              console.warn('关闭超时连接失败:', e)
+            }
+          }
+          doReject(new Error('连接超时，请检查网络'))
+        }, timeout)
         
       } catch (error) {
-        console.error('创建WebSocket失败:', error)
+        console.error('创建 WebSocket 失败:', error)
         doReject(error)
       }
     })
@@ -257,11 +345,12 @@ export class NetworkManager {
   }
 
   handleMessage(message) {
-    console.log('📨 收到消息:', message.type, message)
+    console.log('📨 处理消息:', message.type, message)
     
     switch (message.type) {
       case 'connected':
         this.clientId = message.clientId
+        console.log('✅ clientId 已设置:', this.clientId)
         break
         
       case 'room_created':
@@ -409,6 +498,14 @@ export class NetworkManager {
       case 'batch_test_result':
         if (this.onBatchTestResult) this.onBatchTestResult(message)
         break
+        
+      case 'game_replays':
+        if (this.onGameReplays) this.onGameReplays(message)
+        break
+        
+      case 'game_replay_detail':
+        if (this.onGameReplayDetail) this.onGameReplayDetail(message)
+        break
     }
   }
 
@@ -416,12 +513,15 @@ export class NetworkManager {
     // Safari 兼容：使用数字 1 代替 WebSocket.OPEN
     if (this.ws && this.ws.readyState === 1) {
       try {
-        this.ws.send(JSON.stringify(message))
+        const msgStr = JSON.stringify(message)
+        console.log('📤 发送消息:', message.type, message)
+        this.ws.send(msgStr)
       } catch (e) {
-        console.error('发送消息失败:', e)
+        console.error('❌ 发送消息失败:', e, message)
       }
     } else {
-      console.warn('WebSocket 未就绪，消息未发送:', message.type)
+      const state = this.ws ? this.ws.readyState : 'null'
+      console.warn(`⚠️ WebSocket 未就绪 (state: ${state})，消息未发送:`, message.type)
     }
   }
 
@@ -473,6 +573,11 @@ export class NetworkManager {
   // 添加AI
   addAI() {
     this.send({ type: 'add_ai' })
+  }
+
+  // 更新底注
+  updateAnte(ante) {
+    this.send({ type: 'update_ante', ante })
   }
 
   // 移除AI
@@ -527,39 +632,63 @@ export class NetworkManager {
   async ensureConnected() {
     // 如果已连接且有 clientId，直接返回
     if (this.isConnected && this.clientId && this.ws && this.ws.readyState === 1) {
+      console.log('✅ 连接已就绪')
       return true
     }
+    
+    console.log('🔄 开始建立连接...')
     
     try {
       await this.connect()
       
       // 等待 clientId 设置完成
+      console.log('⏳ 等待 clientId...')
       let retries = 0
-      while (!this.clientId && retries < 20) {
+      while (!this.clientId && retries < 30) { // 增加重试次数
         await new Promise(r => setTimeout(r, 100))
         retries++
       }
       
-      return !!this.clientId
+      if (this.clientId) {
+        console.log('✅ 连接就绪，clientId:', this.clientId)
+        return true
+      } else {
+        console.error('❌ 未能获取 clientId')
+        return false
+      }
     } catch (e) {
-      console.error('连接失败:', e.message)
+      console.error('❌ 连接失败:', e.message)
+      console.error('错误堆栈:', e.stack)
       return false
     }
   }
 
   // 注册
   async register(username, password) {
+    console.log('📝 开始注册流程...')
+    
     try {
       const connected = await this.ensureConnected()
       if (!connected) {
-        return { success: false, message: '无法连接服务器' }
+        console.error('❌ 无法建立连接')
+        return { 
+          success: false, 
+          message: '无法连接到服务器，请检查网络连接' 
+        }
       }
     } catch (e) {
-      return { success: false, message: '连接失败: ' + e.message }
+      console.error('❌ 连接异常:', e)
+      return { 
+        success: false, 
+        message: '连接失败: ' + e.message 
+      }
     }
+    
+    console.log('📤 发送注册请求...')
     
     return new Promise((resolve) => {
       this.onRegisterResult = (msg) => {
+        console.log('📥 收到注册响应:', msg)
         this.onRegisterResult = null
         resolve(msg)
       }
@@ -567,26 +696,40 @@ export class NetworkManager {
       
       setTimeout(() => {
         if (this.onRegisterResult) {
+          console.error('⏱️ 注册请求超时')
           this.onRegisterResult = null
-          resolve({ success: false, message: '请求超时' })
+          resolve({ success: false, message: '请求超时，请重试' })
         }
-      }, 5000)
+      }, 8000) // 增加超时时间
     })
   }
 
   // 登录
   async login(username, password) {
+    console.log('🔐 开始登录流程...')
+    
     try {
       const connected = await this.ensureConnected()
       if (!connected) {
-        return { success: false, message: '无法连接服务器' }
+        console.error('❌ 无法建立连接')
+        return { 
+          success: false, 
+          message: '无法连接到服务器，请检查网络连接' 
+        }
       }
     } catch (e) {
-      return { success: false, message: '连接失败: ' + e.message }
+      console.error('❌ 连接异常:', e)
+      return { 
+        success: false, 
+        message: '连接失败: ' + e.message 
+      }
     }
+    
+    console.log('📤 发送登录请求...')
     
     return new Promise((resolve) => {
       this.onLoginResult = (msg) => {
+        console.log('📥 收到登录响应:', msg)
         this.onLoginResult = null
         resolve(msg)
       }
@@ -594,10 +737,11 @@ export class NetworkManager {
       
       setTimeout(() => {
         if (this.onLoginResult) {
+          console.error('⏱️ 登录请求超时')
           this.onLoginResult = null
-          resolve({ success: false, message: '请求超时' })
+          resolve({ success: false, message: '请求超时，请重试' })
         }
-      }, 5000)
+      }, 8000) // 增加超时时间
     })
   }
 
@@ -730,6 +874,42 @@ export class NetworkManager {
           resolve(false)
         }
       }, 5000)
+    })
+  }
+
+  // 获取复盘列表
+  getGameReplays(page = 1, pageSize = 20) {
+    return new Promise((resolve) => {
+      this.onGameReplays = (msg) => {
+        this.onGameReplays = null
+        resolve(msg)
+      }
+      this.send({ type: 'get_game_replays', page, pageSize })
+      
+      setTimeout(() => {
+        if (this.onGameReplays) {
+          this.onGameReplays = null
+          resolve({ list: [], total: 0, page, pageSize })
+        }
+      }, 3000)
+    })
+  }
+
+  // 获取复盘详情
+  getGameReplayDetail(id) {
+    return new Promise((resolve) => {
+      this.onGameReplayDetail = (msg) => {
+        this.onGameReplayDetail = null
+        resolve(msg)
+      }
+      this.send({ type: 'get_game_replay_detail', id })
+      
+      setTimeout(() => {
+        if (this.onGameReplayDetail) {
+          this.onGameReplayDetail = null
+          resolve({ detail: null })
+        }
+      }, 3000)
     })
   }
 }

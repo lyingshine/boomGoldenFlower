@@ -10,7 +10,9 @@ export default defineConfig({
     proxy: {
       '/ws': {
         target: 'ws://localhost:3001',
-        ws: true
+        ws: true,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ws/, '')
       },
       '/api': {
         target: 'http://localhost:3001',

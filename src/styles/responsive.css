@@ -324,7 +324,7 @@
     width: 50vw;
     max-width: 260px;
     height: 360px;
-    margin: calc(200px + env(safe-area-inset-top)) auto 30px auto;
+    margin: calc(170px + env(safe-area-inset-top)) auto 30px auto;
     border-width: 4px;
     border-radius: var(--radius-full);
     overflow: visible;
@@ -815,6 +815,81 @@
     border-top: none !important;
   }
   
+  /* ===== 移动端操作气泡位置 ===== */
+  /* 底部玩家(0,1) - 操作气泡在左侧，聊天气泡在右侧 */
+  .seat-0 .action-bubble {
+    top: 50% !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: calc(100% + 10px) !important;
+    transform: translateY(-50%) !important;
+  }
+  .seat-0 .chat-bubble {
+    left: calc(100% + 10px) !important;
+    right: auto !important;
+  }
+  .seat-0 .chat-bubble::after {
+    left: -6px !important;
+    right: auto !important;
+    border-right: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-left: none !important;
+  }
+  
+  .seat-1 .action-bubble {
+    top: 50% !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: calc(100% + 10px) !important;
+    transform: translateY(-50%) !important;
+  }
+  .seat-1 .chat-bubble {
+    left: calc(100% + 10px) !important;
+    right: auto !important;
+  }
+  .seat-1 .chat-bubble::after {
+    left: -6px !important;
+    right: auto !important;
+    border-right: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-left: none !important;
+  }
+  
+  /* 顶部玩家(4,5) - 操作气泡在左侧，聊天气泡在右侧 */
+  .seat-4 .action-bubble {
+    top: 50% !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: calc(100% + 10px) !important;
+    transform: translateY(-50%) !important;
+  }
+  .seat-4 .chat-bubble {
+    left: calc(100% + 10px) !important;
+    right: auto !important;
+  }
+  .seat-4 .chat-bubble::after {
+    left: -6px !important;
+    right: auto !important;
+    border-right: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-left: none !important;
+  }
+  
+  .seat-5 .action-bubble {
+    top: 50% !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: calc(100% + 10px) !important;
+    transform: translateY(-50%) !important;
+  }
+  .seat-5 .chat-bubble {
+    left: calc(100% + 10px) !important;
+    right: auto !important;
+  }
+  .seat-5 .chat-bubble::after {
+    left: -6px !important;
+    right: auto !important;
+    border-right: 6px solid rgba(255, 255, 255, 0.95) !important;
+    border-left: none !important;
+  }
+
   /* 空座位样�?*/
   .empty-seat {
     opacity: 0.25;

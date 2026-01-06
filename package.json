@@ -7,11 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "node --watch server.js"
+    "server": "node --watch server.js",
+    "migrate:passwords": "node server/utils/migratePasswords.js"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.2.3",
     "mysql2": "^3.16.0",
     "vue": "^3.4.0",
+    "winston": "^3.19.0",
     "ws": "^8.16.0"
   },
   "devDependencies": {

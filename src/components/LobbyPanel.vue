@@ -301,6 +301,22 @@
               </button>
             </div>
           </div>
+
+          <!-- 底注设置 -->
+          <div v-if="networkManager?.isHost" class="lobby-ante-setting">
+            <div class="ante-setting-label">💰 本桌底注</div>
+            <div class="ante-selector">
+              <button v-for="ante in anteOptions" :key="ante" 
+                      :class="['ante-option', { active: currentAnte === ante }]"
+                      @click="updateAnte(ante)">
+                ¥{{ ante }}
+              </button>
+            </div>
+          </div>
+          <div v-else class="lobby-ante-display">
+            <span class="ante-display-label">💰 本桌底注:</span>
+            <span class="ante-display-value">¥{{ currentAnte }}</span>
+          </div>
         </div>
 
         <!-- 玩家列表 -->
@@ -309,7 +325,8 @@
                class="lobby-player-card"
                :class="{ host: idx === 0 }">
             <div class="lobby-player-avatar">
-              {{ getPlayerEmoji(p, idx) }}
+              <img v-if="getPlayerAvatarUrl(p)" :src="getPlayerAvatarUrl(p)" class="lobby-avatar-img" />
+              <span v-else>{{ getPlayerEmoji(p, idx) }}</span>
             </div>
             <div class="lobby-player-info">
               <div class="lobby-player-name">
@@ -336,7 +353,7 @@
                   @click="$emit('start-game')" 
                   class="btn btn-primary lobby-btn start-btn"
                   :disabled="lobbyPlayers.length < 2">
-            🎲 开始游戏
+            🚪 进入房间
           </button>
           <button v-if="!networkManager?.isHost" class="btn lobby-btn waiting-btn" disabled>
             ⏳ 等待房主开始...
@@ -356,7 +373,7 @@ import { version } from '../../package.json'
 
 export default {
   name: 'LobbyPanel',
-  props: ['networkManager', 'userManager', 'lobbyPlayers', 'roomCode'],
+  props: ['networkManager', 'userManager', 'lobbyPlayers', 'roomCode', 'roomAnte'],
   emits: ['start-game', 'leave-lobby', 'players-updated', 'room-created', 'logout'],
   data() {
     return { 
@@ -383,8 +400,10 @@ export default {
       activeGamePromptResolve: null,
       // 创建房间设置
       showCreateRoomModal: false,
-      selectedAnte: 10,
-      anteOptions: [5, 10, 20, 50, 100]
+      selectedAnte: 20,
+      anteOptions: [20, 50, 100],
+      // 当前房间底注
+      currentAnte: 20
     }
   },
   computed: {
@@ -427,6 +446,11 @@ export default {
       if (user && player.name === user.username) return user.avatar || '😎'
       const emojis = ['😊', '😄', '🙂', '😏', '🤔', '😌', '🧐', '😁', '🤨', '😤', '🙄', '😶']
       return emojis[idx % emojis.length]
+    },
+    getPlayerAvatarUrl(player) {
+      const user = this.userManager?.getCurrentUser()
+      if (user && player.name === user.username) return user.avatarUrl || null
+      return player.avatarUrl || null
     },
     formatChips(num) {
       if (num >= 10000) return (num / 10000).toFixed(1) + 'w'
@@ -565,8 +589,8 @@ export default {
       this.showCreateRoomModal = false
     },
     openCreateRoomModal() {
-      this.selectedAnte = 10
-      this.showCreateRoomModal = true
+      this.selectedAnte = 20
+      this.createRoom()
     },
     async confirmCreateRoom() {
       await this.createRoom()
@@ -602,6 +626,10 @@ export default {
       this.showRoomList = false
     },
     addAI() { this.networkManager.addAI() },
+    updateAnte(ante) {
+      this.currentAnte = ante
+      this.networkManager.updateAnte(ante)
+    },
     removeAI(seatIndex) { this.networkManager.removeAI(seatIndex) },
     
     // 显示进行中对局提示
@@ -665,6 +693,9 @@ export default {
     },
     leaderboardType() {
       if (this.showLeaderboard) this.loadLeaderboard()
+    },
+    roomAnte(val) {
+      if (val !== undefined) this.currentAnte = val
     }
   }
 }
@@ -1319,6 +1350,45 @@ export default {
   flex-wrap: wrap;
 }
 
+/* 房间内底注设置 */
+.lobby-ante-setting {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 12px;
+}
+
+.ante-setting-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 12px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.lobby-ante-display {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.ante-display-label {
+  color: rgba(255, 255, 255, 0.6);
+  margin-right: 8px;
+}
+
+.ante-display-value {
+  color: #ffd700;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+}
+
 .ante-option {
   padding: 10px 18px;
   background: rgba(0, 0, 0, 0.3);
@@ -1544,6 +1614,13 @@ export default {
   align-items: center;
   justify-content: center;
   font-size: 32px;
+}
+
+.lobby-avatar-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .lobby-player-info {

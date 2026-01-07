@@ -1198,8 +1198,8 @@ export class AIDecisionMaker {
     
     // 多人底池时更谨慎开牌
     const playerCount = opponentProfiles.length + 1
-    if (playerCount >= 4 && strength < 6000) return null  // 4人以上需要更强的牌
-    if (playerCount >= 3 && strength < 5000) return null  // 3人需要中等以上
+    if (playerCount >= 4 && strength < 5000) return null  // 4人以上需要顺子级别
+    if (playerCount >= 3 && strength < 4000) return null  // 3人需要一对大牌以上
     
     // 获取自修正参数
     const adjustments = this.getStrategyAdjustments(player.name)

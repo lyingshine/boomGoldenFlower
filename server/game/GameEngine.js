@@ -281,8 +281,8 @@ export class GameEngine {
 
     if (allActed && allBetsEqual) {
       this.state.showdownReady = true
-      // 进入新一轮下注：重置所有玩家的 hasActed，增加回合数
-      this.state.round++
+      // 所有人都行动过且下注相等，重置hasActed让游戏继续
+      // 炸金花是持续下注直到开牌或弃牌，不像德州有固定轮次
       actionable.forEach(p => {
         p.hasActed = false
       })

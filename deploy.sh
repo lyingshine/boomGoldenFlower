@@ -8,12 +8,15 @@ WEB_ROOT="/opt/1panel/www/sites/115.159.68.212/index"  # 网站根目录，根�
 echo "=== 停止当前运行的服务器 ==="
 pm2 delete boom 2>/dev/null || true
 
-echo "=== 删除旧项目目录 ==="
-rm -rf "$PROJECT_DIR"
-
-echo "=== 从 Git 拉取项目 ==="
-cd /home
-git clone "$GIT_URL"
+echo "=== 更新代码 ==="
+if [ -d "$PROJECT_DIR" ]; then
+  cd "$PROJECT_DIR"
+  git fetch origin
+  git reset --hard origin/master
+else
+  cd /home
+  git clone "$GIT_URL"
+fi
 
 echo "=== 安装依赖 ==="
 cd "$PROJECT_DIR"

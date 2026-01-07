@@ -70,7 +70,9 @@ npm run server   # 后端 (ws://localhost:3001)
 
 - 前端：Vue 3 + Vite
 - 后端：Node.js + WebSocket (ws)
-- 数据存储：JSON文件 (users_data.json)
+- 数据库：MySQL (mysql2)
+- 密码加密：bcrypt
+- 日志：Winston
 - 通信协议：WebSocket 双向实时通信
 
 ## 项目结构

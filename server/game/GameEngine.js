@@ -371,15 +371,24 @@ export class GameEngine {
     const decision = await this.aiDecisionMaker.makeDecision(seatIndex)
     
     // 记录 AI 操作到复盘日志（带决策思路）
+    // 注意：opponentProfiles 已在 makeDecision 中计算并缓存，这里复用缓存
     if (decision && player) {
       const activePlayers = this.getActivePlayers().filter(p => p.id !== seatIndex)
-      const opponentProfiles = await this.aiDecisionMaker.getOpponentProfiles(seatIndex, activePlayers)
       const position = this.aiDecisionMaker.calculatePosition(seatIndex, activePlayers)
       const handEval = player.hasPeeked ? this.aiDecisionMaker.evaluateHandStrength(
         player.hand.getType().weight,
         activePlayers.length + 1,
         position
       ) : null
+      
+      // 构建简化的 opponentProfiles（只用于 reasoning，不需要完整数据）
+      const opponentProfiles = activePlayers.map(p => ({
+        player: p,
+        analysis: this.aiDecisionMaker.profileCache.getAnalysis(p.name, p.lastBetAmount) || { type: 'unknown' },
+        sessionBehavior: this.aiDecisionMaker.analyzeSessionBehavior(
+          this.aiDecisionMaker.getSessionMemory(p.name), p.lastBetAmount
+        )
+      }))
       
       const reasoning = this.aiDecisionMaker.generateReasoning(player, decision, {
         strength: player.hasPeeked ? player.hand.getType().weight : null,

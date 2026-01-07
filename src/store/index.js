@@ -127,22 +127,26 @@ function createStore() {
     setMySeatIndex(index) {
       state.game.mySeatIndex = index
     },
-    updateGameState(serverState) {
+    updateGameState(serverState, isFull = true) {
       if (!serverState) return
       
-      state.game.phase = serverState.phase || 'waiting'
-      state.game.round = serverState.round || 0
-      state.game.pot = serverState.pot || 0
-      state.game.currentBet = serverState.currentBet || 10
-      state.game.ante = serverState.ante || 10
-      state.game.currentPlayerIndex = serverState.currentPlayerIndex || 0
-      state.game.winner = serverState.winner || null
-      state.game.showdownReady = serverState.showdownReady || false
-      state.game.firstRoundComplete = serverState.firstRoundComplete || false
-      state.game.showdownResult = serverState.showdownResult || null
+      // 更新基础字段（只更新存在的字段）
+      if (serverState.phase !== undefined) state.game.phase = serverState.phase
+      if (serverState.round !== undefined) state.game.round = serverState.round
+      if (serverState.pot !== undefined) state.game.pot = serverState.pot
+      if (serverState.currentBet !== undefined) state.game.currentBet = serverState.currentBet
+      if (serverState.ante !== undefined) state.game.ante = serverState.ante
+      if (serverState.currentPlayerIndex !== undefined) state.game.currentPlayerIndex = serverState.currentPlayerIndex
+      if (serverState.winner !== undefined) state.game.winner = serverState.winner
+      if (serverState.showdownReady !== undefined) state.game.showdownReady = serverState.showdownReady
+      if (serverState.firstRoundComplete !== undefined) state.game.firstRoundComplete = serverState.firstRoundComplete
+      if (serverState.showdownResult !== undefined) state.game.showdownResult = serverState.showdownResult
       
+      // 处理座位更新
       if (serverState.seats) {
-        state.game.seats = serverState.seats.map(seat => {
+        if (isFull || Array.isArray(serverState.seats)) {
+          // 完整更新
+          state.game.seats = serverState.seats.map(seat => {
           if (!seat) return null
           return {
             id: seat.id,
@@ -162,6 +166,18 @@ function createStore() {
             handType: seat.handType || null
           }
         })
+        } else {
+          // Delta 更新：只更新变化的座位
+          for (const [index, seatDiff] of Object.entries(serverState.seats)) {
+            const i = parseInt(index)
+            if (seatDiff === null) {
+              state.game.seats[i] = null
+            } else if (state.game.seats[i]) {
+              // 合并变化的属性
+              Object.assign(state.game.seats[i], seatDiff)
+            }
+          }
+        }
       }
     },
     updateSeatsFromPlayers(players) {

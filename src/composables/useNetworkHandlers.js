@@ -111,11 +111,14 @@ export function useNetworkHandlers(networkManager, effects, userManager) {
     store.setLobbyModal(false)
   }
   
-  const handleGameState = (state) => {
+  const handleGameState = (msg) => {
+    const state = msg.state || msg
+    const isFull = msg.full !== false
+    
     const oldPhase = prevPhase.value
     const oldTurn = prevTurn.value
     
-    store.updateGameState(state)
+    store.updateGameState(state, isFull)
     
     if (store.state.game.phase !== 'waiting' && store.state.ui.showLobbyModal) {
       store.setLobbyModal(false)

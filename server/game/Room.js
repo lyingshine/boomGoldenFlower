@@ -1,6 +1,7 @@
 import { GameEngine } from './GameEngine.js'
 import { PlayerProfileManager } from './room/PlayerProfileManager.js'
 import { DisconnectManager } from './room/DisconnectManager.js'
+import { getStateDiffForClient, clearClientState } from '../utils/stateDiff.js'
 
 // 固定的100个AI玩家列表（名字+性格）
 const FIXED_AI_LIST = [
@@ -229,6 +230,9 @@ export class Room {
     const client = this.clients.get(clientId)
     if (!client) return false
 
+    // 清除状态差异缓存
+    clearClientState(clientId)
+
     if (isDisconnect && this.gameStarted) {
       const player = this.game.seats[client.seatIndex]
       if (player) {
@@ -332,11 +336,21 @@ export class Room {
     }
   }
 
-  // 广播游戏状态
-  broadcastGameState() {
+  // 广播游戏状态（支持 Delta 更新）
+  broadcastGameState(forceFull = false) {
     this.clients.forEach((client, clientId) => {
       const state = this.game.getStateForPlayer(client.seatIndex)
-      this.sendTo(clientId, { type: 'game_state', state })
+      
+      if (forceFull) {
+        // 强制发送完整状态
+        this.sendTo(clientId, { type: 'game_state', state, full: true })
+      } else {
+        // 计算差异，只发送变化的部分
+        const diff = getStateDiffForClient(clientId, state)
+        if (diff) {
+          this.sendTo(clientId, { type: 'game_state', state: diff, full: false })
+        }
+      }
     })
   }
 

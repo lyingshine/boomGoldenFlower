@@ -2,12 +2,25 @@
  * 统一配置管理
  * 从环境变量读取配置，提供默认值和验证
  */
-import 'dotenv/config'
+import dotenv from 'dotenv'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 // 环境类型
 const NODE_ENV = process.env.NODE_ENV || 'development'
 const isDevelopment = NODE_ENV === 'development'
 const isProduction = NODE_ENV === 'production'
+
+// 根据环境加载对应的配置文件
+const envFile = isProduction ? '.env.production' : '.env.development'
+const envPath = join(__dirname, '..', '..', envFile)
+dotenv.config({ path: envPath })
+
+console.log(`🔧 加载配置文件: ${envFile}`)
+console.log(`📍 配置路径: ${envPath}`)
 
 // 服务器配置
 export const serverConfig = {

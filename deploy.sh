@@ -32,7 +32,7 @@ echo "前端文件已部署到 $WEB_ROOT"
 
 echo "=== 启动服务器 ==="
 cd "$PROJECT_DIR"
-pm2 start server.js --name boom
+NODE_ENV=production pm2 start server.js --name boom
 pm2 save
 echo "服务器已通过 pm2 启动"
 echo "查看日志: pm2 logs boom"

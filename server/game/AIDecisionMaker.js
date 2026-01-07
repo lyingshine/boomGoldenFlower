@@ -152,6 +152,14 @@ export class AIDecisionMaker {
     return this.opponentAnalyzer.analyzeSessionBehavior(memory, currentBet)
   }
 
+  // 检测倾斜状态
+  detectTiltLevel(profile, opponent) {
+    return this.opponentAnalyzer.detectTiltLevel(profile, opponent)
+  }
+  analyzeSessionBehavior(memory, currentBet) {
+    return this.opponentAnalyzer.analyzeSessionBehavior(memory, currentBet)
+  }
+
   // GTO 混合策略：根据权重随机选择行动
   selectMixedAction(actions) {
     const totalWeight = actions.reduce((sum, a) => sum + a.weight, 0)

@@ -48,6 +48,7 @@ export function calculateDiff(oldState, newState) {
 
 /**
  * 计算座位数组的差异
+ * 注意：如果旧座位为空但新座位有数据，需要发送完整的座位信息
  */
 function calculateSeatsDiff(oldSeats, newSeats) {
   if (!oldSeats || !newSeats) return newSeats
@@ -62,16 +63,18 @@ function calculateSeatsDiff(oldSeats, newSeats) {
     if (!oldSeat && !newSeat) continue
     
     if (!oldSeat || !newSeat) {
+      // 座位从无到有或从有到无，发送完整数据
       diff[i] = newSeat
       hasChanges = true
       continue
     }
     
-    // 比较座位属性
+    // 比较座位属性 - 包含所有可能变化的字段
     const seatDiff = {}
     let seatHasChanges = false
     
-    const keys = ['chips', 'currentBet', 'lastBetAmount', 'lastBetBlind', 
+    const keys = ['id', 'name', 'type', 'avatarUrl',
+                  'chips', 'currentBet', 'lastBetAmount', 'lastBetBlind', 
                   'folded', 'hasPeeked', 'isAllIn', 'lostShowdown', 
                   'cards', 'handType', 'cardCount']
     

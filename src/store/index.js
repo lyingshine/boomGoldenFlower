@@ -145,8 +145,9 @@ function createStore() {
       // 处理座位更新
       if (serverState.seats) {
         if (isFull || Array.isArray(serverState.seats)) {
-          // 完整更新
-          state.game.seats = serverState.seats.map(seat => {
+          // 完整更新 - 确保是数组
+          const seatsArray = Array.isArray(serverState.seats) ? serverState.seats : Object.values(serverState.seats)
+          state.game.seats = seatsArray.map(seat => {
           if (!seat) return null
           return {
             id: seat.id,
@@ -175,6 +176,25 @@ function createStore() {
             } else if (state.game.seats[i]) {
               // 合并变化的属性
               Object.assign(state.game.seats[i], seatDiff)
+            } else {
+              // 座位原本为空，需要创建完整对象
+              state.game.seats[i] = {
+                id: seatDiff.id ?? i,
+                name: seatDiff.name ?? '玩家',
+                chips: seatDiff.chips ?? 1000,
+                type: seatDiff.type ?? 'human',
+                avatarUrl: seatDiff.avatarUrl || null,
+                currentBet: seatDiff.currentBet || 0,
+                lastBetAmount: seatDiff.lastBetAmount || 0,
+                lastBetBlind: seatDiff.lastBetBlind || false,
+                folded: seatDiff.folded || false,
+                lostShowdown: seatDiff.lostShowdown || false,
+                hasPeeked: seatDiff.hasPeeked || false,
+                isAllIn: seatDiff.isAllIn || false,
+                cardCount: seatDiff.cardCount || 0,
+                cards: seatDiff.cards || null,
+                handType: seatDiff.handType || null
+              }
             }
           }
         }

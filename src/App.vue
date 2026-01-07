@@ -135,6 +135,9 @@ export default {
     const chatMessages = computed(() => store.state.messages.chat)
     const actionMessages = computed(() => store.state.messages.action)
     
+    // 用户状态
+    const currentUser = computed(() => store.state.user.currentUser)
+    
     // 初始化管理器
     const initManagers = () => {
       // 先初始化核心管理器
@@ -221,6 +224,9 @@ export default {
       // 消息
       chatMessages,
       actionMessages,
+      
+      // 用户
+      currentUser,
       
       // 特效引用
       particlesRef: effects.particlesRef,

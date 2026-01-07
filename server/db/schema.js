@@ -78,6 +78,8 @@ export async function initDatabase(resetData = false) {
       showdown_initiated INT DEFAULT 0,
       showdown_received INT DEFAULT 0,
       won_without_showdown INT DEFAULT 0,
+      pressure_wins INT DEFAULT 0,
+      pressure_attempts INT DEFAULT 0,
       total_chips_won BIGINT DEFAULT 0,
       total_chips_lost BIGINT DEFAULT 0,
       max_single_win INT DEFAULT 0,
@@ -188,6 +190,7 @@ export async function initDatabase(resetData = false) {
       monster_threshold_adjust FLOAT DEFAULT 0,
       strong_threshold_adjust FLOAT DEFAULT 0,
       medium_threshold_adjust FLOAT DEFAULT 0,
+      weak_threshold_adjust FLOAT DEFAULT 0,
       probe_adjust FLOAT DEFAULT 0,
       total_decisions INT DEFAULT 0,
       updated_at BIGINT
@@ -222,6 +225,7 @@ export async function initDatabase(resetData = false) {
       total_rounds INT DEFAULT 1,
       winner_name VARCHAR(50),
       pot_size INT DEFAULT 0,
+      player_hands_json MEDIUMTEXT,
       actions_json MEDIUMTEXT,
       created_at BIGINT,
       INDEX idx_room_code (room_code),
@@ -268,5 +272,18 @@ async function addColumnsIfNotExist() {
   ]
   for (const field of profileFields) {
     try { await pool.execute(`ALTER TABLE player_profiles ADD COLUMN ${field}`) } catch (e) {}
+  }
+
+  // 复盘表添加玩家手牌字段
+  try { await pool.execute(`ALTER TABLE game_replays ADD COLUMN player_hands_json MEDIUMTEXT`) } catch (e) {}
+
+  // AI策略调整表添加新字段
+  const strategyFields = [
+    'monster_threshold_adjust FLOAT DEFAULT 0',
+    'strong_threshold_adjust FLOAT DEFAULT 0',
+    'medium_threshold_adjust FLOAT DEFAULT 0'
+  ]
+  for (const field of strategyFields) {
+    try { await pool.execute(`ALTER TABLE ai_strategy_adjustments ADD COLUMN ${field}`) } catch (e) {}
   }
 }

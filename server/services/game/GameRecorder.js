@@ -25,6 +25,7 @@ export function recordPlayerBehavior(room, seatIndex, action, amount, result) {
   
   if (action === 'raise') {
     updates.raiseCount = 1
+    updates.pressureAttempts = 1  // 每次加注都是施压尝试
     if (amount <= 20) {
       updates.smallRaiseCount = 1
     } else {
@@ -242,4 +243,26 @@ function generateStrategyRecommendation(profile) {
   if (profile.avgPeekRound > 3) tips.push('看牌较晚，可能是焖牌高手')
   
   return tips.length > 0 ? tips.join('；') : '打法均衡，需综合判断'
+}
+
+
+// 记录施压获胜（玩家加注后其他人全弃牌）
+export function recordPressureWin(room, result) {
+  // 只记录非开牌获胜的情况
+  if (result.challengerHand) return  // 开牌获胜不算施压获胜
+  
+  const winner = room.game.seats[result.winner?.seatIndex]
+  if (!winner || winner.type !== 'human') return
+  
+  // 检查赢家本局是否有加注行为
+  const winnerBet = winner.currentBet || 0
+  const ante = room.ante || 10
+  
+  // 如果赢家下注超过底注，说明有施压行为
+  if (winnerBet > ante) {
+    room.updatePlayerProfile(winner.name, {
+      pressureWins: 1
+    })
+    console.log(`[施压记录] ${winner.name} 施压获胜，下注: ${winnerBet}`)
+  }
 }

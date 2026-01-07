@@ -27,20 +27,20 @@
           <div class="bet-row">
             <!-- 跟注控制 -->
             <div class="bet-inline">
-              <button class="adj-btn" @click="decreaseCall" :disabled="callBetAmount <= callAmount">−</button>
+              <button class="adj-btn" @mousedown="startHold('decreaseCall')" @mouseup="stopHold" @mouseleave="stopHold" @touchstart.prevent="startHold('decreaseCall')" @touchend="stopHold" :disabled="callBetAmount <= callAmount">−</button>
               <button @click="$emit('call', callBetAmount)" :disabled="!canCall" class="btn btn-primary">
                 🤝 跟 ¥{{ callBetAmount }}
               </button>
-              <button class="adj-btn" @click="increaseCall">+</button>
+              <button class="adj-btn" @mousedown="startHold('increaseCall')" @mouseup="stopHold" @mouseleave="stopHold" @touchstart.prevent="startHold('increaseCall')" @touchend="stopHold">+</button>
             </div>
             
             <!-- 焖牌控制 -->
             <div v-if="!myPlayer.hasPeeked" class="bet-inline">
-              <button class="adj-btn" @click="decreaseBlind" :disabled="blindBetAmount <= blindMinAmount">−</button>
+              <button class="adj-btn" @mousedown="startHold('decreaseBlind')" @mouseup="stopHold" @mouseleave="stopHold" @touchstart.prevent="startHold('decreaseBlind')" @touchend="stopHold" :disabled="blindBetAmount <= blindMinAmount">−</button>
               <button @click="$emit('blind', blindBetAmount)" :disabled="!canBlind" class="btn btn-blind">
                 🙈 焖 ¥{{ blindBetAmount }}
               </button>
-              <button class="adj-btn" @click="increaseBlind">+</button>
+              <button class="adj-btn" @mousedown="startHold('increaseBlind')" @mouseup="stopHold" @mouseleave="stopHold" @touchstart.prevent="startHold('increaseBlind')" @touchend="stopHold">+</button>
             </div>
           </div>
           
@@ -107,13 +107,15 @@
 <script>
 export default {
   name: 'GameControls',
-  props: ['gamePhase', 'isHost', 'isMyTurn', 'myPlayer', 'canCall', 'canRaise', 'canShowdown', 'canBlind', 'currentBet', 'showdownTargets', 'showdownCost', 'callAmount', 'blindMinAmount', 'firstRoundComplete'],
+  props: ['gamePhase', 'isHost', 'isMyTurn', 'myPlayer', 'canCall', 'canRaise', 'canShowdown', 'canBlind', 'currentBet', 'showdownTargets', 'showdownCost', 'callAmount', 'blindMinAmount', 'firstRoundComplete', 'ante'],
   emits: ['start-game', 'peek', 'call', 'raise', 'fold', 'showdown', 'blind', 'showdown-mode-change'],
   data() {
     return {
       showdownMode: false,
       callBetAmount: 10,
-      blindBetAmount: 10
+      blindBetAmount: 10,
+      holdTimer: null,
+      holdInterval: null
     }
   },
   watch: {
@@ -153,25 +155,41 @@ export default {
     },
     increaseCall() {
       const max = this.myPlayer ? this.myPlayer.chips : 100
+      const step = this.ante || 10
       if (this.callBetAmount < max) {
-        this.callBetAmount = Math.min(this.callBetAmount + 10, max)
+        this.callBetAmount = Math.min(this.callBetAmount + step, max)
       }
     },
     decreaseCall() {
+      const step = this.ante || 10
       if (this.callBetAmount > this.callAmount) {
-        this.callBetAmount = Math.max(this.callBetAmount - 10, this.callAmount)
+        this.callBetAmount = Math.max(this.callBetAmount - step, this.callAmount)
       }
     },
     increaseBlind() {
       const max = this.myPlayer ? this.myPlayer.chips : 100
+      const step = this.ante || 10
       if (this.blindBetAmount < max) {
-        this.blindBetAmount = Math.min(this.blindBetAmount + 10, max)
+        this.blindBetAmount = Math.min(this.blindBetAmount + step, max)
       }
     },
     decreaseBlind() {
+      const step = this.ante || 10
       if (this.blindBetAmount > this.blindMinAmount) {
-        this.blindBetAmount = Math.max(this.blindBetAmount - 10, this.blindMinAmount)
+        this.blindBetAmount = Math.max(this.blindBetAmount - step, this.blindMinAmount)
       }
+    },
+    startHold(action) {
+      this[action]()
+      this.holdTimer = setTimeout(() => {
+        this.holdInterval = setInterval(() => this[action](), 100)
+      }, 300)
+    },
+    stopHold() {
+      clearTimeout(this.holdTimer)
+      clearInterval(this.holdInterval)
+      this.holdTimer = null
+      this.holdInterval = null
     }
   }
 }
@@ -194,37 +212,41 @@ export default {
 
 /* 圆形按钮容器 */
 .corner-buttons {
-  position: absolute;
-  width: 100%;
-  height: 80px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: auto;
   pointer-events: none;
-  top: 0;
+  z-index: 60;
 }
 
-/* 左右按钮容器 - 固定定位 */
+/* 左右按钮容器 - 与底部玩家卡片齐平 */
 .left-button {
-  position: absolute;
-  bottom: 0;
-  left: 20px;
+  position: fixed;
+  bottom: calc(50vh - 210px);
+  left: calc(50% - 340px);
   pointer-events: auto;
+  z-index: 60;
 }
 
 .right-button {
-  position: absolute;
-  bottom: 0;
-  right: 20px;
+  position: fixed;
+  bottom: calc(50vh - 210px);
+  right: calc(50% - 340px);
   pointer-events: auto;
+  z-index: 60;
 }
 
-/* 圆形按钮样式 - 筹码质感 */
+/* 圆形按钮样式 - PC端优化 */
 .btn-circle {
-  width: 70px;
-  height: 70px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   border: 3px solid;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -232,7 +254,7 @@ export default {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
   position: relative;
 }
 
@@ -297,13 +319,13 @@ export default {
 
 /* 已看牌状态 - 暗淡效果 */
 .btn-peek-disabled {
-  width: 70px;
-  height: 70px;
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
   background: radial-gradient(circle at center, #374151 0%, #1f2937 50%, #111827 100%);
   color: rgba(255, 255, 255, 0.4);
-  border: 3px solid #4b5563;
-  font-size: 10px;
+  border: 2px solid #4b5563;
+  font-size: 9px;
   font-weight: 600;
   cursor: default;
   display: flex;
@@ -333,7 +355,7 @@ export default {
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-/* 底部控制区域 */
+/* 底部控制区域 - PC端优化 */
 .bottom-controls {
   position: fixed;
   bottom: 0;
@@ -341,17 +363,17 @@ export default {
   right: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   align-items: center;
   width: 100%;
-  padding: 20px;
+  padding: 14px 12px;
   background: linear-gradient(180deg, 
     rgba(0, 0, 0, 0) 0%, 
-    rgba(0, 0, 0, 0.3) 30%, 
-    rgba(0, 0, 0, 0.6) 100%);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  min-height: 140px;
+    rgba(0, 0, 0, 0.35) 30%, 
+    rgba(0, 0, 0, 0.65) 100%);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 80px;
 }
 
 /* 统一的底部控制区域 - 所有状态都在这里 */
@@ -363,12 +385,12 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 30px 20px;
+  padding: 15px 10px;
   background: linear-gradient(180deg, 
     rgba(0, 0, 0, 0) 0%, 
     rgba(0, 0, 0, 0.4) 100%);
   backdrop-filter: blur(8px);
-  min-height: 100px;
+  min-height: 50px;
 }
 
 /* 等待其他玩家 - 使用统一样式 */
@@ -401,10 +423,10 @@ export default {
   backdrop-filter: blur(8px);
 }
 
-/* 跟注和焖牌同一行 */
+/* 跟注和焖牌同一行 - PC端优化 */
 .bet-row {
   display: flex;
-  gap: 20px;
+  gap: 12px;
   justify-content: center;
   flex-wrap: wrap;
   width: 100%;
@@ -572,18 +594,18 @@ export default {
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-/* 调节按钮 - 精致设计 */
+/* 调节按钮 - PC端优化 */
 .adj-btn {
-  width: 52px;
-  height: 52px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(0, 0, 0, 0.3);
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 22px;
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 16px;
   font-weight: 400;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
   position: relative;
 }
 
@@ -623,22 +645,22 @@ export default {
   border-radius: 0 14px 14px 0;
 }
 
-/* 按钮组合 */
+/* 按钮组合 - PC端优化 */
 .bet-inline {
   display: flex;
   align-items: center;
   gap: 0;
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
 }
 
 .bet-inline .btn {
   border-radius: 0;
-  min-width: 180px;
-  padding: 20px 24px;
-  font-size: 18px;
+  min-width: 120px;
+  padding: 10px 14px;
+  font-size: 13px;
   font-weight: 700;
   border-left: none;
   border-right: none;
@@ -646,10 +668,10 @@ export default {
 
 /* 尺寸变体 */
 .btn-large {
-  padding: 22px 32px;
-  font-size: 19px;
-  min-width: 180px;
-  border-radius: 16px;
+  padding: 12px 20px;
+  font-size: 14px;
+  min-width: 120px;
+  border-radius: 10px;
 }
 
 /* 状态信息 - 优雅设计 */
@@ -692,10 +714,10 @@ export default {
 }
 
 .btn-small {
-  padding: 18px 24px;
-  font-size: 17px;
-  border-radius: 12px;
-  min-width: 160px;
+  padding: 10px 14px;
+  font-size: 12px;
+  border-radius: 8px;
+  min-width: 100px;
 }
 
 .waiting-message {
@@ -736,51 +758,55 @@ export default {
 /* 移动端适配 */
 @media (max-width: 768px) {
   .left-button {
-    left: 60px;
+    bottom: auto;
+    top: calc(50vh + 180px);
+    left: calc(50% - 180px);
   }
   
   .right-button {
-    right: 60px;
+    bottom: auto;
+    top: calc(50vh + 180px);
+    right: calc(50% - 180px);
   }
   
   .btn-circle {
-    width: 55px;
-    height: 55px;
-    font-size: 10px;
+    width: 45px;
+    height: 45px;
+    font-size: 9px;
   }
   
   .bottom-controls {
-    gap: 16px;
-    padding: 20px;
-    min-height: 140px;
+    gap: 10px;
+    padding: 12px;
+    min-height: 70px;
   }
   
   .bet-row {
-    gap: 18px;
+    gap: 10px;
   }
   
   .bet-inline .btn {
-    min-width: 180px;
-    padding: 22px 26px;
-    font-size: 18px;
+    min-width: 100px;
+    padding: 10px 12px;
+    font-size: 12px;
   }
   
   .btn-large {
-    padding: 24px 32px;
-    font-size: 19px;
-    min-width: 180px;
+    padding: 12px 18px;
+    font-size: 13px;
+    min-width: 110px;
   }
   
   .adj-btn {
-    width: 52px;
-    height: 52px;
-    font-size: 22px;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
   }
   
   .btn-small {
-    padding: 20px 26px;
-    font-size: 17px;
-    min-width: 160px;
+    padding: 10px 14px;
+    font-size: 11px;
+    min-width: 90px;
   }
 }
 

@@ -61,6 +61,7 @@ export class GameState {
       currentPlayerIndex: this.currentPlayerIndex,
       pot: this.pot,
       currentBet: this.currentBet,
+      ante: this.ante,
       dealerIndex: this.dealerIndex,
       showdownReady: this.showdownReady,
       winner: this.winner,

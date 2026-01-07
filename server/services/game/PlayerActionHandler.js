@@ -4,7 +4,7 @@
  */
 import { updateUserChips } from '../RoomService.js'
 import { processAITurn } from './AITurnProcessor.js'
-import { recordPlayerBehavior, recordShowdownResult, updateUsersGameStats } from './GameRecorder.js'
+import { recordPlayerBehavior, recordShowdownResult, updateUsersGameStats, recordPressureWin } from './GameRecorder.js'
 
 export function handlePlayerAction(clientId, data, rooms, clients, send) {
   const client = clients.get(clientId)
@@ -45,6 +45,8 @@ export function handlePlayerAction(clientId, data, rooms, clients, send) {
   // 游戏结束时更新战绩
   if (result.action === 'gameEnd') {
     updateUsersGameStats(room, result)
+    // 记录施压获胜（非开牌获胜）
+    recordPressureWin(room, result)
     room.savePlayerProfiles().catch(e => console.error('保存玩家档案失败:', e.message))
   }
   

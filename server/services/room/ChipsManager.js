@@ -9,6 +9,8 @@ export function updateUserChipsOnLeave(playerName, seatIndex, room, isDisconnect
   const usersCache = getUsersCache()
   if (!playerName || !usersCache[playerName]) return
   if (seatIndex === -1 || seatIndex === undefined) return
+  // 管理员筹码不变
+  if (usersCache[playerName].isAdmin) return
   
   const player = room.game.seats[seatIndex]
   if (!player || player.type !== 'human') return
@@ -27,6 +29,8 @@ export function updateUserChips(room) {
   const usersCache = getUsersCache()
   room.game.seats.forEach(player => {
     if (player && player.type === 'human' && usersCache[player.name]) {
+      // 管理员筹码不变
+      if (usersCache[player.name].isAdmin) return
       usersCache[player.name].chips = player.chips
       saveUserData(player.name)
     }

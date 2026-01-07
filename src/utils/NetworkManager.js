@@ -799,6 +799,18 @@ export class NetworkManager {
     })
   }
 
+  // 更新游戏统计数据
+  updateGameStats(username, stats) {
+    this.send({ 
+      type: 'update_game_stats', 
+      username, 
+      totalGames: stats.totalGames,
+      wins: stats.wins,
+      losses: stats.losses,
+      chips: stats.chips
+    })
+  }
+
   // 断开连接
   disconnect() {
     if (this.ws) {
@@ -827,7 +839,9 @@ export class NetworkManager {
           aiStats: msg.aiStats || [],
           handJudgments: msg.handJudgments || [],
           handCalibrations: msg.handCalibrations || [],
-          playerStrategies: msg.playerStrategies || []
+          playerStrategies: msg.playerStrategies || [],
+          personalityAdjustments: msg.personalityAdjustments || {},
+          globalAdjustments: msg.globalAdjustments || null
         })
       }
       this.send({ type: 'get_ai_profiles' })
@@ -835,7 +849,7 @@ export class NetworkManager {
       setTimeout(() => {
         if (this.onAIProfiles) {
           this.onAIProfiles = null
-          resolve({ profiles: [], aiStats: [], handJudgments: [], handCalibrations: [], playerStrategies: [] })
+          resolve({ profiles: [], aiStats: [], handJudgments: [], handCalibrations: [], playerStrategies: [], personalityAdjustments: {}, globalAdjustments: null })
         }
       }, 3000)
     })

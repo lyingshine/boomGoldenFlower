@@ -40,6 +40,7 @@ function createStore() {
       round: 0,
       pot: 0,
       currentBet: 10,
+      ante: 10,
       currentPlayerIndex: 0,
       mySeatIndex: -1,
       seats: new Array(8).fill(null),
@@ -133,6 +134,7 @@ function createStore() {
       state.game.round = serverState.round || 0
       state.game.pot = serverState.pot || 0
       state.game.currentBet = serverState.currentBet || 10
+      state.game.ante = serverState.ante || 10
       state.game.currentPlayerIndex = serverState.currentPlayerIndex || 0
       state.game.winner = serverState.winner || null
       state.game.showdownReady = serverState.showdownReady || false

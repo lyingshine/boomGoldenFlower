@@ -2,29 +2,118 @@ import { GameEngine } from './GameEngine.js'
 import { PlayerProfileManager } from './room/PlayerProfileManager.js'
 import { DisconnectManager } from './room/DisconnectManager.js'
 
-// 随机网名生成器
-const AI_NAME_PREFIXES = [
-  '快乐的', '沉默的', '神秘', '暴躁的', '佛系', '咸鱼', '摸鱼', '划水', '躺平', '卷王',
-  '深夜', '凌晨', '午夜', '黄昏', '清晨', '迷路的', '孤独的', '寂寞的', '无敌', '最强',
-  '隔壁', '楼下', '村口', '街角', '路边', '天选', '欧皇', '非酋', '倒霉', '幸运'
+// 固定的100个AI玩家列表（名字+性格）
+const FIXED_AI_LIST = [
+  // 激进型 (20个)
+  { name: '狂瓜', personality: 'aggressive' },
+  { name: '暴躁老哥', personality: 'aggressive' },
+  { name: '冲锋鸡', personality: 'aggressive' },
+  { name: '莽夫', personality: 'aggressive' },
+  { name: '火爆辣椒', personality: 'aggressive' },
+  { name: '战狂', personality: 'aggressive' },
+  { name: '横冲直撞', personality: 'aggressive' },
+  { name: '不服就干', personality: 'aggressive' },
+  { name: '梭哈王', personality: 'aggressive' },
+  { name: '全押狂人', personality: 'aggressive' },
+  { name: '暴力熊', personality: 'aggressive' },
+  { name: '疯狗', personality: 'aggressive' },
+  { name: '狂战士', personality: 'aggressive' },
+  { name: '怒火中烧', personality: 'aggressive' },
+  { name: '血性男儿', personality: 'aggressive' },
+  { name: '猛虎下山', personality: 'aggressive' },
+  { name: '霸王龙', personality: 'aggressive' },
+  { name: '狂风暴雨', personality: 'aggressive' },
+  { name: '烈焰红唇', personality: 'aggressive' },
+  { name: '雷霆万钧', personality: 'aggressive' },
+  
+  // 保守型 (20个)
+  { name: '稳如老狗', personality: 'conservative' },
+  { name: '佛系青年', personality: 'conservative' },
+  { name: '躺平大师', personality: 'conservative' },
+  { name: '咸鱼王', personality: 'conservative' },
+  { name: '淡定哥', personality: 'conservative' },
+  { name: '慢慢来', personality: 'conservative' },
+  { name: '稳健投资', personality: 'conservative' },
+  { name: '保本第一', personality: 'conservative' },
+  { name: '小心驶得万年船', personality: 'conservative' },
+  { name: '谨慎老王', personality: 'conservative' },
+  { name: '乌龟流', personality: 'conservative' },
+  { name: '蜗牛哥', personality: 'conservative' },
+  { name: '慢热型', personality: 'conservative' },
+  { name: '稳坐钓鱼台', personality: 'conservative' },
+  { name: '老谋深算', personality: 'conservative' },
+  { name: '深藏不露', personality: 'conservative' },
+  { name: '静观其变', personality: 'conservative' },
+  { name: '以逸待劳', personality: 'conservative' },
+  { name: '守株待兔', personality: 'conservative' },
+  { name: '按兵不动', personality: 'conservative' },
+  
+  // 均衡型 (20个)
+  { name: '中庸之道', personality: 'balanced' },
+  { name: '平衡大师', personality: 'balanced' },
+  { name: '随机应变', personality: 'balanced' },
+  { name: '见招拆招', personality: 'balanced' },
+  { name: '灵活多变', personality: 'balanced' },
+  { name: '不偏不倚', personality: 'balanced' },
+  { name: '中规中矩', personality: 'balanced' },
+  { name: '稳中求进', personality: 'balanced' },
+  { name: '攻守兼备', personality: 'balanced' },
+  { name: '进退自如', personality: 'balanced' },
+  { name: '张弛有度', personality: 'balanced' },
+  { name: '收放自如', personality: 'balanced' },
+  { name: '游刃有余', personality: 'balanced' },
+  { name: '从容不迫', personality: 'balanced' },
+  { name: '不急不躁', personality: 'balanced' },
+  { name: '心如止水', personality: 'balanced' },
+  { name: '波澜不惊', personality: 'balanced' },
+  { name: '泰然自若', personality: 'balanced' },
+  { name: '处变不惊', personality: 'balanced' },
+  { name: '临危不乱', personality: 'balanced' },
+  
+  // 诡诈型 (20个)
+  { name: '神秘萌狗', personality: 'tricky' },
+  { name: '午夜采马', personality: 'tricky' },
+  { name: '诈唬大师', personality: 'tricky' },
+  { name: '千面狐', personality: 'tricky' },
+  { name: '影子杀手', personality: 'tricky' },
+  { name: '迷雾行者', personality: 'tricky' },
+  { name: '虚虚实实', personality: 'tricky' },
+  { name: '真真假假', personality: 'tricky' },
+  { name: '声东击西', personality: 'tricky' },
+  { name: '暗度陈仓', personality: 'tricky' },
+  { name: '瞒天过海', personality: 'tricky' },
+  { name: '偷天换日', personality: 'tricky' },
+  { name: '无中生有', personality: 'tricky' },
+  { name: '李代桃僵', personality: 'tricky' },
+  { name: '金蝉脱壳', personality: 'tricky' },
+  { name: '笑里藏刀', personality: 'tricky' },
+  { name: '口蜜腹剑', personality: 'tricky' },
+  { name: '绵里藏针', personality: 'tricky' },
+  { name: '扮猪吃虎', personality: 'tricky' },
+  { name: '深不可测', personality: 'tricky' },
+  
+  // 紧凶型 (20个)
+  { name: '帅饼', personality: 'tight' },
+  { name: '小豆', personality: 'tight' },
+  { name: '精打细算', personality: 'tight' },
+  { name: '一击必杀', personality: 'tight' },
+  { name: '蓄势待发', personality: 'tight' },
+  { name: '伺机而动', personality: 'tight' },
+  { name: '养精蓄锐', personality: 'tight' },
+  { name: '厚积薄发', personality: 'tight' },
+  { name: '韬光养晦', personality: 'tight' },
+  { name: '卧薪尝胆', personality: 'tight' },
+  { name: '忍者神龟', personality: 'tight' },
+  { name: '潜伏者', personality: 'tight' },
+  { name: '狙击手', personality: 'tight' },
+  { name: '刺客信条', personality: 'tight' },
+  { name: '暗夜猎手', personality: 'tight' },
+  { name: '致命一击', personality: 'tight' },
+  { name: '一剑封喉', personality: 'tight' },
+  { name: '毒蛇出洞', personality: 'tight' },
+  { name: '猎鹰突击', personality: 'tight' },
+  { name: '雷霆一击', personality: 'tight' }
 ]
-const AI_NAME_MIDS = [
-  '小', '老', '大', '阿', '', '二', '三', '狂', '野', '萌',
-  '酷', '帅', '美', '靓', '憨', '呆', '傻', '皮', '浪', '稳'
-]
-const AI_NAME_SUFFIXES = [
-  '王', '哥', '姐', '弟', '妹', '叔', '爷', '总', '神', '仙',
-  '豆', '瓜', '蛋', '饼', '面', '猫', '狗', '鱼', '鸟', '虎',
-  '牛', '马', '羊', '鸡', '龙', '蛇', '兔', '鼠', '猪', '猴'
-]
-
-function generateRandomAIName() {
-  const usePrefix = Math.random() < 0.35
-  const prefix = usePrefix ? AI_NAME_PREFIXES[Math.floor(Math.random() * AI_NAME_PREFIXES.length)] : ''
-  const mid = AI_NAME_MIDS[Math.floor(Math.random() * AI_NAME_MIDS.length)]
-  const suffix = AI_NAME_SUFFIXES[Math.floor(Math.random() * AI_NAME_SUFFIXES.length)]
-  return prefix + mid + suffix
-}
 
 // 生成随机 AI 头像 URL（使用 DiceBear API）
 function generateRandomAIAvatar() {
@@ -32,6 +121,11 @@ function generateRandomAIAvatar() {
   const style = styles[Math.floor(Math.random() * styles.length)]
   const seed = Math.random().toString(36).substring(2, 10)
   return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`
+}
+
+// 获取固定AI（根据索引）
+function getFixedAI(index) {
+  return FIXED_AI_LIST[index % FIXED_AI_LIST.length]
 }
 
 /**
@@ -163,28 +257,34 @@ export class Room {
       if (seat) usedNames.add(seat.name)
     }
 
-    // 生成不重复的随机名称
-    let aiName = null
-    for (let i = 0; i < 20; i++) {
-      const name = generateRandomAIName()
-      if (!usedNames.has(name)) {
-        aiName = name
+    // 从固定AI列表中选择未使用的AI
+    let selectedAI = null
+    for (let i = 0; i < FIXED_AI_LIST.length; i++) {
+      const ai = FIXED_AI_LIST[(this.aiCounter + i) % FIXED_AI_LIST.length]
+      if (!usedNames.has(ai.name)) {
+        selectedAI = ai
         break
       }
     }
 
-    if (!aiName) {
-      // 兜底：加随机数
-      aiName = generateRandomAIName() + Math.floor(Math.random() * 100)
+    if (!selectedAI) {
+      // 兜底：所有名字都用完了，加编号
+      selectedAI = { 
+        name: FIXED_AI_LIST[this.aiCounter % FIXED_AI_LIST.length].name + this.aiCounter,
+        personality: FIXED_AI_LIST[this.aiCounter % FIXED_AI_LIST.length].personality
+      }
     }
 
     // 生成随机头像
     const avatarUrl = generateRandomAIAvatar()
 
     this.aiCounter++
-    this.game.addPlayer(seatIndex, aiName, 20000, 'ai', false, avatarUrl)
+    this.game.addPlayer(seatIndex, selectedAI.name, 20000, 'ai', false, avatarUrl)
+    
+    // 设置AI的固定性格
+    this.game.aiDecisionMaker.setFixedPersonality(selectedAI.name, selectedAI.personality)
 
-    return { seatIndex, name: aiName, avatarUrl }
+    return { seatIndex, name: selectedAI.name, avatarUrl }
   }
 
   // 移除 AI

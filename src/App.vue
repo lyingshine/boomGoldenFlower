@@ -71,6 +71,7 @@
         :blind-min-amount="blindMinAmount"
         :current-bet="currentBet"
         :first-round-complete="firstRoundComplete"
+        :ante="ante"
         @start-game="startNewGame"
         @peek="sendAction('peek')"
         @call="onCall"
@@ -136,16 +137,17 @@ export default {
     
     // 初始化管理器
     const initManagers = () => {
+      // 先初始化核心管理器
+      networkManager.value = new NetworkManager()
+      
+      // 音效异步初始化，不阻塞
       try {
         soundManager.value = new SoundManager()
-        soundManager.value.init()
-        soundManager.value.bindGlobalUISound()
+        soundManager.value.init() // 不 await，让它后台初始化
         window.$sound = soundManager.value
       } catch (e) {
-        console.warn('音效初始化失败')
+        console.warn('音效初始化失败:', e)
       }
-      
-      networkManager.value = new NetworkManager()
       userManager.value = new UserManager(networkManager.value)
       
       // 设置网络回调

@@ -35,127 +35,137 @@
         </div>
       </section>
 
-      <!-- 策略自修正 -->
-      <section v-if="activeTab === 'adjustments'" class="monitor-section">
-        <h3>🔧 策略自修正参数</h3>
-        <p class="section-desc">AI 根据实战表现自动调整的策略参数</p>
-        
-        <!-- 全局调整（牌力阈值） -->
-        <div class="adjustment-group">
-          <h4>🎯 牌力阈值调整（全局共享）</h4>
-          <div v-if="!globalAdjustments" class="no-data">暂无调整数据</div>
-          <div v-else class="adjustments-grid">
-            <div class="adjustment-card">
-              <div class="adj-label">怪兽牌阈值</div>
-              <div class="adj-value" :class="getAdjustClass(globalAdjustments.monsterThresholdAdjust)">
-                {{ formatAdjust(globalAdjustments.monsterThresholdAdjust) }}
+      <!-- 策略与认知 -->
+      <section v-if="activeTab === 'strategy'" class="monitor-section">
+        <!-- 策略自修正 -->
+        <div class="subsection">
+          <h3>🔧 策略自修正参数</h3>
+          <p class="section-desc">AI 根据实战表现自动调整的策略参数</p>
+          
+          <!-- 全局调整（牌力阈值） -->
+          <div class="adjustment-group">
+            <h4>🎯 牌力阈值调整（全局共享）</h4>
+            <div v-if="!globalAdjustments" class="no-data">暂无调整数据</div>
+            <div v-else class="adjustments-grid">
+              <div class="adjustment-card">
+                <div class="adj-label">怪兽牌阈值</div>
+                <div class="adj-value" :class="getAdjustClass(globalAdjustments.monsterThresholdAdjust)">
+                  {{ formatAdjust(globalAdjustments.monsterThresholdAdjust) }}
+                </div>
+                <div class="adj-desc">{{ getThresholdDesc(globalAdjustments.monsterThresholdAdjust) }}</div>
               </div>
-              <div class="adj-desc">{{ getThresholdDesc(globalAdjustments.monsterThresholdAdjust) }}</div>
-            </div>
-            <div class="adjustment-card">
-              <div class="adj-label">强牌阈值</div>
-              <div class="adj-value" :class="getAdjustClass(globalAdjustments.strongThresholdAdjust)">
-                {{ formatAdjust(globalAdjustments.strongThresholdAdjust) }}
+              <div class="adjustment-card">
+                <div class="adj-label">强牌阈值</div>
+                <div class="adj-value" :class="getAdjustClass(globalAdjustments.strongThresholdAdjust)">
+                  {{ formatAdjust(globalAdjustments.strongThresholdAdjust) }}
+                </div>
+                <div class="adj-desc">{{ getThresholdDesc(globalAdjustments.strongThresholdAdjust) }}</div>
               </div>
-              <div class="adj-desc">{{ getThresholdDesc(globalAdjustments.strongThresholdAdjust) }}</div>
-            </div>
-            <div class="adjustment-card">
-              <div class="adj-label">中等牌阈值</div>
-              <div class="adj-value" :class="getAdjustClass(globalAdjustments.mediumThresholdAdjust)">
-                {{ formatAdjust(globalAdjustments.mediumThresholdAdjust) }}
+              <div class="adjustment-card">
+                <div class="adj-label">中等牌阈值</div>
+                <div class="adj-value" :class="getAdjustClass(globalAdjustments.mediumThresholdAdjust)">
+                  {{ formatAdjust(globalAdjustments.mediumThresholdAdjust) }}
+                </div>
+                <div class="adj-desc">{{ getThresholdDesc(globalAdjustments.mediumThresholdAdjust) }}</div>
               </div>
-              <div class="adj-desc">{{ getThresholdDesc(globalAdjustments.mediumThresholdAdjust) }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 全局调整（其他） -->
-        <div class="adjustment-group" v-if="globalAdjustments">
-          <h4>📈 通用策略调整（全局共享）</h4>
-          <div class="adjustments-grid">
-            <div class="adjustment-card">
-              <div class="adj-label">弃牌倾向</div>
-              <div class="adj-value" :class="getAdjustClass(globalAdjustments.foldAdjust)">
-                {{ formatPercent(globalAdjustments.foldAdjust) }}
-              </div>
-            </div>
-            <div class="adjustment-card">
-              <div class="adj-label">开牌倾向</div>
-              <div class="adj-value" :class="getAdjustClass(globalAdjustments.showdownAdjust)">
-                {{ formatPercent(globalAdjustments.showdownAdjust) }}
-              </div>
-            </div>
-            <div class="adjustment-card">
-              <div class="adj-label">试探频率</div>
-              <div class="adj-value" :class="getAdjustClass(globalAdjustments.probeAdjust)">
-                {{ formatPercent(globalAdjustments.probeAdjust) }}
+              <div class="adjustment-card">
+                <div class="adj-label">弱牌阈值</div>
+                <div class="adj-value" :class="getAdjustClass(globalAdjustments.weakThresholdAdjust)">
+                  {{ formatAdjust(globalAdjustments.weakThresholdAdjust) }}
+                </div>
+                <div class="adj-desc">{{ getThresholdDesc(globalAdjustments.weakThresholdAdjust) }}</div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- 按个性类型调整 -->
-        <div class="adjustment-group">
-          <h4>🎭 个性类型调整</h4>
-          <div v-if="Object.keys(personalityAdjustments).length === 0" class="no-data">暂无个性调整数据</div>
-          <div v-else class="personality-grid">
-            <div v-for="(adj, type) in personalityAdjustments" :key="type" class="personality-card">
-              <div class="personality-header">{{ getPersonalityName(type) }}</div>
-              <div class="personality-stats">
-                <div class="adj-row">
-                  <span>诈唬频率:</span>
-                  <span :class="getAdjustClass(adj.bluffAdjust)">{{ formatPercent(adj.bluffAdjust) }}</span>
+          <!-- 全局调整（其他） -->
+          <div class="adjustment-group" v-if="globalAdjustments">
+            <h4>📈 通用策略调整（全局共享）</h4>
+            <div class="adjustments-grid">
+              <div class="adjustment-card">
+                <div class="adj-label">弃牌倾向</div>
+                <div class="adj-value" :class="getAdjustClass(globalAdjustments.foldAdjust)">
+                  {{ formatPercent(globalAdjustments.foldAdjust) }}
                 </div>
-                <div class="adj-row">
-                  <span>激进度:</span>
-                  <span :class="getAdjustClass(adj.aggressionAdjust)">{{ formatPercent(adj.aggressionAdjust) }}</span>
+              </div>
+              <div class="adjustment-card">
+                <div class="adj-label">开牌倾向</div>
+                <div class="adj-value" :class="getAdjustClass(globalAdjustments.showdownAdjust)">
+                  {{ formatPercent(globalAdjustments.showdownAdjust) }}
                 </div>
-                <div class="adj-row">
-                  <span>慢打频率:</span>
-                  <span :class="getAdjustClass(adj.slowPlayAdjust)">{{ formatPercent(adj.slowPlayAdjust) }}</span>
-                </div>
-                <div class="adj-row">
-                  <span>陷阱频率:</span>
-                  <span :class="getAdjustClass(adj.trapAdjust)">{{ formatPercent(adj.trapAdjust) }}</span>
+              </div>
+              <div class="adjustment-card">
+                <div class="adj-label">试探频率</div>
+                <div class="adj-value" :class="getAdjustClass(globalAdjustments.probeAdjust)">
+                  {{ formatPercent(globalAdjustments.probeAdjust) }}
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      <!-- 大牌认知校准 -->
-      <section v-if="activeTab === 'calibration'" class="monitor-section">
-        <h3>🎴 大牌认知校准</h3>
-        <p class="section-desc">AI 对各牌型的认知是否正确，系统会根据实际胜率动态调整</p>
-        <div v-if="handCalibrations.length === 0" class="no-data">暂无校准数据，需要更多开牌记录</div>
-        <div v-else class="calibration-grid">
-          <div v-for="c in handCalibrations" :key="c.handType" class="calibration-card" :class="{ warning: !c.shouldBeStrong }">
-            <div class="calibration-header">
-              <span class="hand-name">{{ formatHandTypeName(c.handType) }}</span>
-              <span class="calibration-status" :class="c.shouldBeStrong ? 'correct' : 'incorrect'">
-                {{ c.shouldBeStrong ? '✓ 认知正确' : '⚠ 需要修正' }}
-              </span>
-            </div>
-            <div class="calibration-stats">
-              <div class="stat-row">
-                <span>原始权重:</span>
-                <span>{{ c.baseWeight }}</span>
-              </div>
-              <div class="stat-row" :class="{ adjusted: c.calibratedWeight !== c.baseWeight }">
-                <span>校准权重:</span>
-                <span>{{ c.calibratedWeight }}</span>
-              </div>
-              <div class="stat-row">
-                <span>实际胜率:</span>
-                <span :class="getWinRateClass(c.winRate)">{{ c.winRate }}%</span>
-              </div>
-              <div class="stat-row">
-                <span>开牌次数:</span>
-                <span>{{ c.totalShowdowns }}</span>
+          <!-- 按个性类型调整 -->
+          <div class="adjustment-group">
+            <h4>🎭 个性类型调整</h4>
+            <div v-if="Object.keys(personalityAdjustments).length === 0" class="no-data">暂无个性调整数据</div>
+            <div v-else class="personality-grid">
+              <div v-for="(adj, type) in personalityAdjustments" :key="type" class="personality-card">
+                <div class="personality-header">{{ getPersonalityName(type) }}</div>
+                <div class="personality-stats">
+                  <div class="adj-row">
+                    <span>诈唬频率:</span>
+                    <span :class="getAdjustClass(adj.bluffAdjust)">{{ formatPercent(adj.bluffAdjust) }}</span>
+                  </div>
+                  <div class="adj-row">
+                    <span>激进度:</span>
+                    <span :class="getAdjustClass(adj.aggressionAdjust)">{{ formatPercent(adj.aggressionAdjust) }}</span>
+                  </div>
+                  <div class="adj-row">
+                    <span>慢打频率:</span>
+                    <span :class="getAdjustClass(adj.slowPlayAdjust)">{{ formatPercent(adj.slowPlayAdjust) }}</span>
+                  </div>
+                  <div class="adj-row">
+                    <span>陷阱频率:</span>
+                    <span :class="getAdjustClass(adj.trapAdjust)">{{ formatPercent(adj.trapAdjust) }}</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div v-if="c.calibrationNote" class="calibration-note">{{ c.calibrationNote }}</div>
+          </div>
+        </div>
+
+        <!-- 大牌认知校准 -->
+        <div class="subsection">
+          <h3>🎴 大牌认知校准</h3>
+          <p class="section-desc">AI 对各牌型的认知是否正确，系统会根据实际胜率动态调整</p>
+          <div v-if="handCalibrations.length === 0" class="no-data">暂无校准数据，需要更多开牌记录</div>
+          <div v-else class="calibration-grid">
+            <div v-for="c in handCalibrations" :key="c.handType" class="calibration-card" :class="{ warning: !c.shouldBeStrong }">
+              <div class="calibration-header">
+                <span class="hand-name">{{ formatHandTypeName(c.handType) }}</span>
+                <span class="calibration-status" :class="c.shouldBeStrong ? 'correct' : 'incorrect'">
+                  {{ c.shouldBeStrong ? '✓ 认知正确' : '⚠ 需要修正' }}
+                </span>
+              </div>
+              <div class="calibration-stats">
+                <div class="stat-row">
+                  <span>原始权重:</span>
+                  <span>{{ c.baseWeight }}</span>
+                </div>
+                <div class="stat-row" :class="{ adjusted: c.calibratedWeight !== c.baseWeight }">
+                  <span>校准权重:</span>
+                  <span>{{ c.calibratedWeight }}</span>
+                </div>
+                <div class="stat-row">
+                  <span>实际胜率:</span>
+                  <span :class="getWinRateClass(c.winRate)">{{ c.winRate }}%</span>
+                </div>
+                <div class="stat-row">
+                  <span>开牌次数:</span>
+                  <span>{{ c.totalShowdowns }}</span>
+                </div>
+              </div>
+              <div v-if="c.calibrationNote" class="calibration-note">{{ c.calibrationNote }}</div>
+            </div>
           </div>
         </div>
       </section>
@@ -248,6 +258,26 @@
             <span>🏆 {{ replayDetail.winnerName }}</span>
             <span>底池 ¥{{ replayDetail.potSize }}</span>
           </div>
+          
+          <!-- 玩家手牌展示 -->
+          <div v-if="replayDetail.playerHands && replayDetail.playerHands.length" class="player-hands-section">
+            <div class="hands-title">🃏 玩家手牌</div>
+            <div class="hands-list">
+              <div v-for="ph in replayDetail.playerHands" :key="ph.seatIndex" 
+                   class="hand-item" :class="{ 'winner': ph.name === replayDetail.winnerName, 'folded': ph.folded }">
+                <span class="hand-player">{{ ph.name }}</span>
+                <span class="hand-cards">
+                  <span v-for="(card, ci) in ph.cards" :key="ci" 
+                        :class="['card', isRedSuit(card.suit) ? 'red' : 'black']">
+                    {{ card.rank }}{{ card.suit }}
+                  </span>
+                </span>
+                <span class="hand-type">{{ ph.handType || '' }}</span>
+                <span v-if="ph.folded" class="folded-badge">弃牌</span>
+              </div>
+            </div>
+          </div>
+          
           <div class="actions-timeline">
             <div v-for="(action, idx) in replayDetail.actions" :key="idx" 
                  class="action-item" :class="action.playerType">
@@ -255,6 +285,9 @@
               <div class="action-content">
                 <div class="action-header">
                   <span class="action-player">{{ action.playerName }}</span>
+                  <span class="blind-status" :class="action.isBlind ? 'blind' : 'peeked'">
+                    {{ action.isBlind ? '🙈焖' : '👁看' }}
+                  </span>
                   <span class="action-type-badge" :class="action.action">{{ formatAction(action.action) }}</span>
                   <span v-if="action.amount" class="action-amount">¥{{ action.amount }}</span>
                 </div>
@@ -285,8 +318,7 @@ export default {
       activeTab: 'overview',
       tabs: [
         { id: 'overview', name: 'AI 综合胜率' },
-        { id: 'adjustments', name: '策略自修正' },
-        { id: 'calibration', name: '大牌认知校准' },
+        { id: 'strategy', name: '策略与认知' },
         { id: 'players', name: '玩家建模' },
         { id: 'replays', name: '牌局复盘' }
       ],
@@ -294,6 +326,18 @@ export default {
       replayDetail: null,
       replayPage: 1,
       replayTotal: 0
+    }
+  },
+  mounted() {
+    console.log('[AIMonitor] globalAdjustments:', this.globalAdjustments)
+    console.log('[AIMonitor] personalityAdjustments:', this.personalityAdjustments)
+  },
+  watch: {
+    globalAdjustments(val) {
+      console.log('[AIMonitor] globalAdjustments 更新:', val)
+    },
+    personalityAdjustments(val) {
+      console.log('[AIMonitor] personalityAdjustments 更新:', val)
     }
   },
   methods: {
@@ -433,6 +477,9 @@ export default {
       const map = { fold: '弃牌', call: '跟注', raise: '加注', blind: '焖牌', showdown: '开牌', peek: '看牌' }
       return map[action] || action
     },
+    isRedSuit(suit) {
+      return suit === '♥' || suit === '♦'
+    },
     loadReplayDetail(id) {
       this.$emit('load-replay-detail', id)
     },
@@ -528,6 +575,26 @@ export default {
   padding-bottom: 10px;
   border-bottom: 1px solid rgba(255, 215, 0, 0.2);
 }
+
+/* 子区块样式 */
+.subsection {
+  margin-bottom: 40px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.subsection:last-child {
+  margin-bottom: 0;
+}
+.subsection h3 {
+  font-size: 17px;
+  color: #ffd700;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+}
+
 .section-desc { color: rgba(255, 255, 255, 0.6); font-size: 13px; margin-bottom: 15px; }
 .no-data { text-align: center; color: rgba(255, 255, 255, 0.4); padding: 40px; }
 
@@ -730,6 +797,69 @@ export default {
   border-radius: 8px; margin-bottom: 15px;
   font-size: 14px; color: rgba(255, 255, 255, 0.8);
 }
+.player-hands-section {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+.hands-title {
+  font-size: 13px;
+  color: #ffd700;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+.hands-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hand-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  border-left: 3px solid rgba(255, 255, 255, 0.2);
+}
+.hand-item.winner {
+  border-left-color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+}
+.hand-item.folded {
+  opacity: 0.5;
+}
+.hand-player {
+  font-weight: bold;
+  font-size: 13px;
+  min-width: 60px;
+}
+.hand-cards {
+  display: flex;
+  gap: 6px;
+}
+.hand-cards .card {
+  font-size: 14px;
+  font-weight: bold;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+}
+.hand-cards .card.red { color: #dc2626; }
+.hand-cards .card.black { color: #1f2937; }
+.hand-type {
+  font-size: 12px;
+  color: #a78bfa;
+  margin-left: auto;
+}
+.folded-badge {
+  font-size: 10px;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
 .actions-timeline { display: flex; flex-direction: column; gap: 8px; }
 .action-item {
   display: flex; gap: 12px;
@@ -747,6 +877,19 @@ export default {
 .action-content { flex: 1; }
 .action-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .action-player { font-weight: bold; font-size: 14px; }
+.blind-status {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+.blind-status.blind {
+  background: rgba(251, 191, 36, 0.25);
+  color: #fbbf24;
+}
+.blind-status.peeked {
+  background: rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
+}
 .action-type-badge {
   font-size: 11px; padding: 2px 8px;
   border-radius: 10px; background: rgba(255, 255, 255, 0.1);

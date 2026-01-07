@@ -31,38 +31,41 @@ export class Hand {
 
     const isFlush = suits.every(s => s === suits[0])
     const isStraight = this.checkStraight(values)
+    
+    // 计算牌面分数（用于同牌型比较）
+    const cardScore = values[0] * 225 + values[1] * 15 + values[2]  // 最大 14*225+13*15+12 = 3357
 
-    // 豹子
+    // 豹子 (8000-8999)
     if (values[0] === values[1] && values[1] === values[2]) {
       return { type: 'leopard', weight: 8000 + values[0] }
     }
 
-    // 同花顺
+    // 同花顺 (7000-7999)
     if (isFlush && isStraight) {
       const w = (values[0] === 14 && values[1] === 3) ? 1 : values[0]
       return { type: 'straight_flush', weight: 7000 + w }
     }
 
-    // 同花
+    // 同花 (6000-6999)
     if (isFlush) {
-      return { type: 'flush', weight: 6000 + values[0] * 100 + values[1] * 10 + values[2] }
+      return { type: 'flush', weight: 6000 + cardScore * 0.29 }  // 最大约 6973
     }
 
-    // 顺子（比对子大）
+    // 顺子 (5000-5999)
     if (isStraight) {
       const w = (values[0] === 14 && values[1] === 3) ? 1 : values[0]
       return { type: 'straight', weight: 5000 + w }
     }
 
-    // 对子（比顺子小）
+    // 对子 (4000-4999)
     if (values[0] === values[1] || values[1] === values[2] || values[0] === values[2]) {
       const pair = values[0] === values[1] ? values[0] : values[1] === values[2] ? values[1] : values[2]
       const kicker = values.find(v => v !== pair)
-      return { type: 'pair', weight: 3000 + pair * 100 + kicker }
+      return { type: 'pair', weight: 4000 + pair * 15 + kicker }  // 最大 4000+210+13=4223
     }
 
-    // 高牌
-    return { type: 'high_card', weight: values[0] * 100 + values[1] * 10 + values[2] }
+    // 高牌 (1000-1999)
+    return { type: 'high_card', weight: 1000 + cardScore * 0.29 }  // 最大约 1973
   }
 
   checkStraight(values) {

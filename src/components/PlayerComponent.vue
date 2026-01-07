@@ -80,34 +80,44 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 14px;
+  gap: 8px;
+  padding: 14px 20px;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.99) 100%);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
 }
 
 .main-info.active {
-  border-color: rgba(255, 215, 0, 0.6);
-  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+  border-color: rgba(255, 215, 0, 0.7);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.4);
+  animation: activePulse 2s ease-in-out infinite;
+}
+
+@keyframes activePulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.4); }
+  50% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.7), 0 6px 20px rgba(0, 0, 0, 0.5); }
 }
 
 .main-info.folded {
   opacity: 0.5;
+  filter: grayscale(0.6);
 }
 
-/* 头像 */
+/* 头像 - PC端放大 */
 .player-avatar {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 32px;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .avatar-img {
@@ -118,7 +128,8 @@ export default {
 }
 
 .player-avatar:hover {
-  transform: scale(1.1);
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .avatar-color-0, .avatar-color-1, .avatar-color-2, 
@@ -126,6 +137,10 @@ export default {
 .my-avatar {
   background: none;
   border: none;
+}
+
+.my-avatar {
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* 资产提示 */
@@ -161,27 +176,29 @@ export default {
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* 昵称 */
+/* 昵称 - PC端优化 */
 .player-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: #fff;
-  max-width: 80px;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* 状态 */
 .player-status {
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .status {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 8px;
+  letter-spacing: 0.3px;
 }
 
 .status.blind {

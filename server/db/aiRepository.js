@@ -239,8 +239,12 @@ export async function clearAllAIData() {
   await pool.execute('TRUNCATE TABLE ai_player_strategies')
   await pool.execute('TRUNCATE TABLE ai_hand_calibration')
   await pool.execute('TRUNCATE TABLE ai_strategy_adjustments')
+  await pool.execute('TRUNCATE TABLE ai_personality_adjustments')
+  await pool.execute('TRUNCATE TABLE ai_global_adjustments')
   await pool.execute('TRUNCATE TABLE player_profiles')
-  console.log('✅ 已清除所有 AI 数据和玩家建模数据')
+  await pool.execute('TRUNCATE TABLE player_showdown_records')
+  await pool.execute('TRUNCATE TABLE game_replays')
+  console.log('✅ 已清除所有 AI 数据、玩家建模数据和复盘数据')
 }
 
 // 清除除用户表外的所有数据
@@ -289,16 +293,17 @@ export async function saveGlobalAdjustments(adjustments, totalDecisions = 0) {
   const now = Date.now()
   await pool.execute(
     `INSERT INTO ai_global_adjustments 
-     (key_name, fold_adjust, showdown_adjust, monster_threshold_adjust, strong_threshold_adjust, medium_threshold_adjust, probe_adjust, total_decisions, updated_at)
-     VALUES ('global', ?, ?, ?, ?, ?, ?, ?, ?)
+     (key_name, fold_adjust, showdown_adjust, monster_threshold_adjust, strong_threshold_adjust, medium_threshold_adjust, weak_threshold_adjust, probe_adjust, total_decisions, updated_at)
+     VALUES ('global', ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
      fold_adjust = VALUES(fold_adjust), showdown_adjust = VALUES(showdown_adjust),
      monster_threshold_adjust = VALUES(monster_threshold_adjust), strong_threshold_adjust = VALUES(strong_threshold_adjust),
-     medium_threshold_adjust = VALUES(medium_threshold_adjust), probe_adjust = VALUES(probe_adjust),
-     total_decisions = VALUES(total_decisions), updated_at = VALUES(updated_at)`,
+     medium_threshold_adjust = VALUES(medium_threshold_adjust), weak_threshold_adjust = VALUES(weak_threshold_adjust),
+     probe_adjust = VALUES(probe_adjust), total_decisions = VALUES(total_decisions), updated_at = VALUES(updated_at)`,
     [adjustments.foldAdjust || 0, adjustments.showdownAdjust || 0,
      adjustments.monsterThresholdAdjust || 0, adjustments.strongThresholdAdjust || 0,
-     adjustments.mediumThresholdAdjust || 0, adjustments.probeAdjust || 0, totalDecisions, now]
+     adjustments.mediumThresholdAdjust || 0, adjustments.weakThresholdAdjust || 0,
+     adjustments.probeAdjust || 0, totalDecisions, now]
   )
 }
 
@@ -329,6 +334,7 @@ export async function loadGlobalAdjustments() {
     monsterThresholdAdjust: row.monster_threshold_adjust,
     strongThresholdAdjust: row.strong_threshold_adjust,
     mediumThresholdAdjust: row.medium_threshold_adjust,
+    weakThresholdAdjust: row.weak_threshold_adjust,
     probeAdjust: row.probe_adjust,
     totalDecisions: row.total_decisions
   }
@@ -393,25 +399,29 @@ export async function analyzePlayerBetPattern(username) {
 export async function saveGameReplay(replay) {
   const now = Date.now()
   const actionsJson = JSON.stringify(replay.actions || [])
+  const playerHandsJson = JSON.stringify(replay.playerHands || [])
   
   const [result] = await pool.execute(
     `INSERT INTO game_replays 
-     (game_id, room_code, start_time, end_time, total_rounds, winner_name, pot_size, actions_json, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     (game_id, room_code, start_time, end_time, total_rounds, winner_name, pot_size, player_hands_json, actions_json, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [replay.gameId, replay.roomCode, replay.startTime, replay.endTime, 
-     replay.totalRounds, replay.winnerName || null, replay.potSize || 0, actionsJson, now]
+     replay.totalRounds, replay.winnerName || null, replay.potSize || 0, playerHandsJson, actionsJson, now]
   )
   return result.insertId
 }
 
 // 获取复盘列表（分页）
 export async function getGameReplays(page = 1, pageSize = 20) {
-  const offset = (page - 1) * pageSize
+  // 确保参数是整数
+  const pageNum = parseInt(page, 10) || 1
+  const pageSizeNum = parseInt(pageSize, 10) || 20
+  const offset = (pageNum - 1) * pageSizeNum
   
+  // 使用字符串拼接而不是参数化查询（LIMIT/OFFSET在某些MySQL2版本有问题）
   const [rows] = await pool.execute(
     `SELECT id, game_id, room_code, start_time, end_time, total_rounds, winner_name, pot_size, created_at
-     FROM game_replays ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    [pageSize, offset]
+     FROM game_replays ORDER BY created_at DESC LIMIT ${pageSizeNum} OFFSET ${offset}`
   )
   
   const [countRows] = await pool.execute('SELECT COUNT(*) as total FROM game_replays')
@@ -419,8 +429,8 @@ export async function getGameReplays(page = 1, pageSize = 20) {
   return {
     list: rows.map(formatReplayListItem),
     total: countRows[0].total,
-    page,
-    pageSize
+    page: pageNum,
+    pageSize: pageSizeNum
   }
 }
 
@@ -443,6 +453,7 @@ export async function getGameReplayDetail(id) {
     totalRounds: row.total_rounds,
     winnerName: row.winner_name,
     potSize: row.pot_size,
+    playerHands: JSON.parse(row.player_hands_json || '[]'),
     actions: JSON.parse(row.actions_json || '[]'),
     createdAt: row.created_at
   }

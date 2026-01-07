@@ -114,6 +114,10 @@
           <span class="quick-icon">🏆</span>
           <span>财富榜</span>
         </button>
+        <button v-if="isAdmin" @click="openAIMonitor" class="quick-btn admin-btn">
+          <span class="quick-icon">🤖</span>
+          <span>AI分析</span>
+        </button>
       </div>
 
       <!-- 签到奖励弹窗 -->
@@ -411,6 +415,7 @@ export default {
     canSignIn() { return this.userManager?.canSignIn() },
     signInStreak() { return this.userManager?.getSignInInfo()?.streak || 0 },
     currentUsername() { return this.userManager?.getCurrentUser()?.username },
+    isAdmin() { return this.userManager?.getCurrentUser()?.isAdmin || false },
     leaderboard() { return this.leaderboardData },
     myRank() { 
       const idx = this.leaderboardData.findIndex(u => u.username === this.currentUsername)
@@ -441,6 +446,9 @@ export default {
     }
   },
   methods: {
+    openAIMonitor() {
+      window.location.href = '/ai'
+    },
     getPlayerEmoji(player, idx) {
       const user = this.userManager?.getCurrentUser()
       if (user && player.name === user.username) return user.avatar || '😎'
@@ -741,34 +749,41 @@ export default {
   filter: blur(40px);
 }
 
-/* ===== 顶部用户栏 - 精致版 ===== */
+/* ===== 顶部用户栏 - PC端优化 ===== */
 .lobby-user-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 14px 20px;
   margin-top: env(safe-area-inset-top);
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%);
-  border-radius: 14px;
-  margin-bottom: 20px;
-  border: 1px solid rgba(255, 215, 0, 0.1);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.25) 100%);
+  border-radius: 16px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 215, 0, 0.12);
 }
 
 .user-info-display {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-info-display:hover {
+  opacity: 0.85;
 }
 
 .user-avatar-ring {
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: linear-gradient(135deg, #ffd700 0%, #b8860b 100%);
   padding: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
 }
 
 .user-avatar-small {
@@ -779,92 +794,106 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 20px;
+}
+
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .user-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .user-name-small {
-  font-size: 14px;
+  font-size: 15px;
   color: white;
-  font-weight: 600;
-  letter-spacing: 0.3px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
 }
 
 .user-chips-small {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 13px;
+  gap: 5px;
+  font-size: 14px;
   color: #4ade80;
-  font-weight: 700;
+  font-weight: 800;
   font-family: 'Courier New', monospace;
 }
 
 .chip-icon {
-  font-size: 11px;
+  font-size: 12px;
+}
+
+.profile-arrow {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.3);
+  margin-left: 4px;
 }
 
 .logout-btn-small {
-  padding: 8px 16px;
+  padding: 10px 18px;
   background: transparent;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  border-radius: 8px;
-  color: rgba(239, 68, 68, 0.8);
-  font-size: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 10px;
+  color: rgba(239, 68, 68, 0.85);
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
 }
 
 .logout-btn-small:hover {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.6);
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.65);
   color: #ef4444;
 }
 
-/* ===== 品牌标题区 ===== */
+/* ===== 品牌标题区 - PC端优化 ===== */
 .lobby-brand {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  margin-bottom: 8px;
+  gap: 24px;
+  margin-bottom: 10px;
 }
 
 .brand-decoration {
-  font-size: 24px;
-  color: rgba(255, 215, 0, 0.3);
+  font-size: 28px;
+  color: rgba(255, 215, 0, 0.35);
   font-weight: bold;
 }
 
-.brand-decoration.left { color: #1e293b; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
-.brand-decoration.right { color: #dc2626; text-shadow: 0 0 10px rgba(220, 38, 38, 0.3); }
+.brand-decoration.left { color: #1e293b; text-shadow: 0 0 12px rgba(255, 215, 0, 0.35); }
+.brand-decoration.right { color: #dc2626; text-shadow: 0 0 12px rgba(220, 38, 38, 0.35); }
 
 .brand-center {
   text-align: center;
 }
 
 .lobby-title {
-  font-size: 28px;
+  font-size: 32px;
   color: #ffd700;
   margin: 0;
-  font-weight: 800;
-  letter-spacing: 4px;
+  font-weight: 900;
+  letter-spacing: 5px;
   text-shadow: 
-    0 0 20px rgba(255, 215, 0, 0.4),
-    0 2px 4px rgba(0, 0, 0, 0.8);
+    0 0 25px rgba(255, 215, 0, 0.45),
+    0 3px 6px rgba(0, 0, 0, 0.9);
 }
 
 .lobby-subtitle-text {
-  font-size: 10px;
-  color: rgba(255, 215, 0, 0.5);
-  letter-spacing: 6px;
-  margin-top: 4px;
-  font-weight: 500;
+  font-size: 11px;
+  color: rgba(255, 215, 0, 0.55);
+  letter-spacing: 7px;
+  margin-top: 5px;
+  font-weight: 600;
 }
 
 .lobby-welcome {
@@ -959,31 +988,31 @@ export default {
   font-weight: 600;
 }
 
-/* ===== 主菜单卡片 ===== */
+/* ===== 主菜单卡片 - PC端优化 ===== */
 .mode-selection {
   display: flex;
-  gap: 16px;
-  margin: 0 0 20px 0;
+  gap: 18px;
+  margin: 0 0 24px 0;
 }
 
 .mode-btn {
   flex: 1;
   position: relative;
   padding: 0;
-  background: linear-gradient(165deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.96) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 
 .mode-btn:hover:not(:disabled) {
-  transform: translateY(-4px);
-  border-color: rgba(255, 215, 0, 0.3);
+  transform: translateY(-5px);
+  border-color: rgba(255, 215, 0, 0.35);
   box-shadow: 
-    0 12px 40px rgba(0, 0, 0, 0.4),
-    0 0 30px rgba(255, 215, 0, 0.1);
+    0 15px 50px rgba(0, 0, 0, 0.45),
+    0 0 35px rgba(255, 215, 0, 0.12);
 }
 
 .mode-btn:disabled {
@@ -992,11 +1021,11 @@ export default {
 }
 
 .mode-card-inner {
-  padding: 24px 16px;
+  padding: 28px 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   position: relative;
   z-index: 1;
 }
@@ -1007,7 +1036,7 @@ export default {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
   transition: left 0.5s ease;
 }
 
@@ -1016,18 +1045,19 @@ export default {
 }
 
 .mode-icon-wrap {
-  width: 56px;
-  height: 56px;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.05) 100%);
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.18) 0%, rgba(255, 215, 0, 0.08) 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .mode-icon {
-  font-size: 28px;
+  font-size: 32px;
 }
 
 .mode-text {
@@ -1035,17 +1065,17 @@ export default {
 }
 
 .mode-title {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
   color: #ffd700;
-  margin-bottom: 4px;
-  letter-spacing: 0.5px;
+  margin-bottom: 5px;
+  letter-spacing: 0.6px;
 }
 
 .mode-desc {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 0.3px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.4px;
 }
 
 /* ===== 房间列表 ===== */
@@ -2029,4 +2059,7 @@ export default {
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.6);
 }
+
+/* ===== PC端房间内布局 ===== */
+/* 样式已移至 responsive.css */
 </style>

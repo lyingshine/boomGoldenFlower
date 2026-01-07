@@ -84,7 +84,8 @@ function formatUser(row) {
     lastLogin: row.last_login,
     lastSignIn: row.last_sign_in,
     signInStreak: row.sign_in_streak,
-    totalSignIns: row.total_sign_ins
+    totalSignIns: row.total_sign_ins,
+    isAdmin: row.is_admin === 1
   }
 }
 

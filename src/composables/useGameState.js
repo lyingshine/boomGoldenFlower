@@ -15,6 +15,7 @@ export function useGameState() {
   const currentPlayerIndex = computed(() => store.state.game.currentPlayerIndex)
   const pot = computed(() => store.state.game.pot)
   const currentBet = computed(() => store.state.game.currentBet)
+  const ante = computed(() => store.state.game.ante)
   const winner = computed(() => store.state.game.winner)
   const mySeatIndex = computed(() => store.state.game.mySeatIndex)
   const firstRoundComplete = computed(() => store.state.game.firstRoundComplete)
@@ -72,6 +73,7 @@ export function useGameState() {
     currentPlayerIndex,
     pot,
     currentBet,
+    ante,
     winner,
     mySeatIndex,
     firstRoundComplete,

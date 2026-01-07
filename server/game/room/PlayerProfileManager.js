@@ -76,6 +76,7 @@ export class PlayerProfileManager {
       'showdownWins', 'showdownLosses', 'bluffCaught', 'bigBetWithWeak',
       'earlyFoldCount', 'lateFoldCount', 'smallRaiseCount', 'bigRaiseCount',
       'checkRaiseCount', 'showdownInitiated', 'showdownReceived', 'wonWithoutShowdown',
+      'pressureWins', 'pressureAttempts',
       'totalChipsWon', 'totalChipsLost'
     ]
 
@@ -133,6 +134,7 @@ export class PlayerProfileManager {
       avgPeekRound: 0, peekRoundSamples: 0,
       earlyFoldCount: 0, lateFoldCount: 0, smallRaiseCount: 0, bigRaiseCount: 0,
       checkRaiseCount: 0, showdownInitiated: 0, showdownReceived: 0, wonWithoutShowdown: 0,
+      pressureWins: 0, pressureAttempts: 0,
       totalChipsWon: 0, totalChipsLost: 0, maxSingleWin: 0, maxSingleLoss: 0,
       avgBetSize: 0, betSizeSamples: 0
     }

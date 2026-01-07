@@ -119,7 +119,8 @@ export async function updateUserProfile(username, { nickname, avatar, avatarUrl 
 // 获取排行榜
 export function getLeaderboard(leaderboardType = 'chips', limit = 999) {
   const usersCache = getUsersCache()
-  const userList = Object.values(usersCache)
+  // 过滤掉管理员
+  const userList = Object.values(usersCache).filter(u => !u.isAdmin)
   
   let sorted
   switch (leaderboardType) {

@@ -23,7 +23,6 @@ export function setupWebSocket(wss) {
     const clientIp = req.socket.remoteAddress
     const clientPort = req.socket.remotePort
     console.log(`🔌 收到连接请求 from ${clientIp}:${clientPort}`)
-    console.log(`   Headers:`, req.headers)
     
     const clientId = generateId()
     clients.set(clientId, { ws, roomCode: null, playerName: null })
@@ -109,6 +108,7 @@ function handleMessage(clientId, data) {
     'sign_in': asyncHandler((cId, d) => UserHandlers.handleSignIn(cId, d, clients)),
     'get_user': asyncHandler((cId, d) => UserHandlers.handleGetUser(cId, d, clients)),
     'update_profile': asyncHandler((cId, d) => UserHandlers.handleUpdateProfile(cId, d, clients)),
+    'update_game_stats': asyncHandler((cId, d) => UserHandlers.handleUpdateGameStats(cId, d, clients)),
     'sync_user': asyncHandler((cId, d) => UserHandlers.handleSyncUser(cId, d, clients)),
     'get_leaderboard': asyncHandler((cId, d) => UserHandlers.handleGetLeaderboard(cId, d, clients)),
     

@@ -242,7 +242,18 @@ export function useNetworkHandlers(networkManager, effects, userManager) {
       chips: myPlayer?.chips ?? user.chips
     }
     
+    // 更新本地数据
     userManager.value.updateUser(updates)
+    
+    // 同步到服务器
+    if (networkManager.value) {
+      networkManager.value.updateGameStats(user.username, {
+        totalGames: updates.totalGames,
+        wins: updates.wins,
+        losses: updates.losses,
+        chips: updates.chips
+      })
+    }
   }
   
   return {

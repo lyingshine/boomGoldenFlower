@@ -76,3 +76,24 @@ export function handleSyncUser(clientId, data, clients) {
   const client = clients.get(clientId)
   send(client.ws, { type: 'user_synced', success: true })
 }
+
+export async function handleUpdateGameStats(clientId, data, clients) {
+  const client = clients.get(clientId)
+  const { username, totalGames, wins, losses, chips } = data
+  
+  try {
+    const result = await updateUserProfile(username, { 
+      totalGames, 
+      wins, 
+      losses, 
+      chips 
+    })
+    send(client.ws, { type: 'update_game_stats_result', ...result })
+  } catch (error) {
+    send(client.ws, { 
+      type: 'update_game_stats_result', 
+      success: false, 
+      message: error.message || '更新统计失败'
+    })
+  }
+}

@@ -149,6 +149,14 @@ export class AIDecisionMaker {
     return this.aiPersonalities.get(playerName)
   }
 
+  // 设置固定性格（从固定AI列表调用）
+  setFixedPersonality(playerName, personalityType) {
+    const config = AI_PERSONALITIES[personalityType]
+    if (config) {
+      this.aiPersonalities.set(playerName, { type: personalityType, config })
+    }
+  }
+
   // 获取个性类型名称
   getPersonalityType(playerName) {
     return this.getPersonality(playerName).type
@@ -524,13 +532,18 @@ export class AIDecisionMaker {
       const sessionMem = this.getSessionMemory(p.name)
       const sessionBehavior = this.analyzeSessionBehavior(sessionMem, p.lastBetAmount)
       const betPattern = p.type === 'human' ? await this.getPlayerBetPattern(p.name) : null
+      
+      // 获取AI对手的性格配置
+      const aiPersonality = p.isAI ? this.getPersonality(p.name) : null
+      
       return {
         player: p,
         profile,
         sessionMemory: sessionMem,
         sessionBehavior,
         betPattern,
-        analysis: this.analyzeOpponent(p, profile, sessionMem, sessionBehavior),
+        aiPersonality,  // AI对手的性格
+        analysis: this.analyzeOpponent(p, profile, sessionMem, sessionBehavior, aiPersonality),
         estimatedStrength: this.estimateOpponentStrength(p, profile, sessionMem, sessionBehavior, betPattern)
       }
     }))
@@ -548,7 +561,7 @@ export class AIDecisionMaker {
   }
 
   // 对手深度分析
-  analyzeOpponent(opponent, profile, sessionMem = null, sessionBehavior = null) {
+  analyzeOpponent(opponent, profile, sessionMem = null, sessionBehavior = null, aiPersonality = null) {
     const analysis = {
       type: 'unknown',
       bluffLikelihood: 0.3,
@@ -559,6 +572,48 @@ export class AIDecisionMaker {
       showdownTendency: 0.5,
       tiltLevel: 0,
       sessionAggression: 0
+    }
+    
+    // AI对手：直接使用其性格配置
+    if (aiPersonality && aiPersonality.config) {
+      const config = aiPersonality.config
+      // 根据AI性格设置分析结果
+      if (config.name === '激进型') {
+        analysis.type = 'aggressive'
+        analysis.bluffLikelihood = 0.45
+        analysis.foldPressure = 0.3
+        analysis.dangerLevel = 0.6
+      } else if (config.name === '保守型') {
+        analysis.type = 'rock'
+        analysis.bluffLikelihood = 0.15
+        analysis.foldPressure = 0.7
+        analysis.dangerLevel = 0.4
+      } else if (config.name === '诡诈型') {
+        analysis.type = 'maniac'
+        analysis.bluffLikelihood = 0.55
+        analysis.foldPressure = 0.4
+        analysis.dangerLevel = 0.7
+      } else if (config.name === '均衡型') {
+        analysis.type = 'balanced'
+        analysis.bluffLikelihood = 0.3
+        analysis.foldPressure = 0.5
+        analysis.dangerLevel = 0.5
+      } else if (config.name === '紧凶型') {
+        analysis.type = 'aggressive'
+        analysis.bluffLikelihood = 0.25
+        analysis.foldPressure = 0.55
+        analysis.dangerLevel = 0.65
+      }
+      
+      // 整合本局行为微调
+      if (sessionBehavior) {
+        analysis.sessionAggression = sessionBehavior.intensity
+        if (sessionBehavior.isAbnormal) {
+          analysis.bluffLikelihood += 0.1
+        }
+      }
+      
+      return analysis
     }
     
     // 整合本局行为分析
@@ -594,6 +649,11 @@ export class AIDecisionMaker {
     const pressureWinRate = wins > 0 ? (profile.wonWithoutShowdown || 0) / wins : 0
     const avgBet = profile.avgBetSize || 20
     
+    // 施压成功率（新增）
+    const pressureAttempts = profile.pressureAttempts || 0
+    const pressureWins = profile.pressureWins || 0
+    const pressureSuccessRate = pressureAttempts > 0 ? pressureWins / pressureAttempts : 0
+    
     // 倾斜状态检测
     analysis.tiltLevel = this.detectTiltLevel(profile, opponent)
     
@@ -620,15 +680,26 @@ export class AIDecisionMaker {
       analysis.type = 'balanced'
     }
     
-    // 诈唬概率
+    // 诈唬概率（结合已知诈唬率和施压成功率）
+    // 基础诈唬率
     analysis.bluffLikelihood = bluffRate * 0.5 + 0.2
+    
+    // 施压成功率高 + 已知诈唬率高 = 很可能经常诈唬
+    if (pressureSuccessRate > 0.3 && bluffRate > 0.1) {
+      analysis.bluffLikelihood += pressureSuccessRate * 0.3
+    }
+    // 施压成功率高但开牌诈唬率低 = 可能真的牌好，降低诈唬判断
+    else if (pressureSuccessRate > 0.3 && bluffRate < 0.1 && showdownTotal >= 3) {
+      analysis.bluffLikelihood -= 0.1
+    }
+    
     if (bigRaiseRatio > 0.5 && showdownWinRate < 0.4) analysis.bluffLikelihood += 0.2
-    if (pressureWinRate > 0.4) analysis.bluffLikelihood += 0.15
+    if (pressureWinRate > 0.4) analysis.bluffLikelihood += 0.1
     if (!opponent.hasPeeked && opponent.lastBetAmount > 25) analysis.bluffLikelihood += 0.15
     if (opponent.hasPeeked && opponent.lastBetAmount > avgBet * 1.5) {
       analysis.bluffLikelihood += bluffRate > 0.15 ? 0.1 : -0.1
     }
-    analysis.bluffLikelihood = Math.max(0.05, Math.min(0.8, analysis.bluffLikelihood))
+    analysis.bluffLikelihood = Math.max(0.05, Math.min(0.85, analysis.bluffLikelihood))
     
     // 施压后弃牌概率
     analysis.foldPressure = foldRate * 0.6 + 0.15
@@ -1513,11 +1584,19 @@ export class AIDecisionMaker {
   // 分析决策历史并调整策略
   analyzeAndAdjust(playerName) {
     const history = this.decisionHistory.get(playerName)
-    if (!history || history.length < 5) return  // 数据不足
+    if (!history || history.length < 5) {
+      console.log(`[策略分析] ${playerName} 决策历史不足: ${history?.length || 0}/5`)
+      return
+    }
     
     // 只分析有结果的决策
     const completedDecisions = history.filter(d => d.result !== null)
-    if (completedDecisions.length < 5) return
+    if (completedDecisions.length < 5) {
+      console.log(`[策略分析] ${playerName} 已完成决策不足: ${completedDecisions.length}/5`)
+      return
+    }
+    
+    console.log(`[策略分析] ${playerName} 开始分析，已完成决策: ${completedDecisions.length}`)
     
     // 获取个性类型
     const personalityType = this.getPersonalityType(playerName)
@@ -1541,6 +1620,7 @@ export class AIDecisionMaker {
         monsterThresholdAdjust: 0,  // 怪兽牌阈值调整
         strongThresholdAdjust: 0,   // 强牌阈值调整
         mediumThresholdAdjust: 0,   // 中等牌阈值调整
+        weakThresholdAdjust: 0,     // 弱牌阈值调整
         probeAdjust: 0            // 试探频率调整
       }
     }
@@ -1550,23 +1630,29 @@ export class AIDecisionMaker {
     const bluffs = completedDecisions.filter(d => 
       d.action === 'raise' && d.handStrength < 4000
     )
-    if (bluffs.length >= 3) {
+    console.log(`[个性分析] 诈唬次数: ${bluffs.length}`)
+    if (bluffs.length >= 2) {
       const bluffWinRate = bluffs.filter(b => b.result.won).length / bluffs.length
+      console.log(`[个性分析] 诈唬胜率: ${(bluffWinRate * 100).toFixed(1)}%`)
       if (bluffWinRate < 0.3) {
         personalityAdj.bluffAdjust = Math.max(-0.15, personalityAdj.bluffAdjust - 0.03)
-      } else if (bluffWinRate > 0.6) {
+      } else if (bluffWinRate > 0.5) {
         personalityAdj.bluffAdjust = Math.min(0.15, personalityAdj.bluffAdjust + 0.02)
       }
     }
     
     // 分析强牌激进度（按个性）
-    const strongHandsForAggr = completedDecisions.filter(d => d.handStrength >= 6000)
-    if (strongHandsForAggr.length >= 3) {
+    const strongHandsForAggr = completedDecisions.filter(d => d.handStrength >= 5000)
+    console.log(`[个性分析] 强牌次数: ${strongHandsForAggr.length}`)
+    if (strongHandsForAggr.length >= 2) {
       const strongWinRate = strongHandsForAggr.filter(s => s.result.won).length / strongHandsForAggr.length
       const avgProfit = strongHandsForAggr.reduce((sum, s) => sum + s.result.profit, 0) / strongHandsForAggr.length
+      console.log(`[个性分析] 强牌胜率: ${(strongWinRate * 100).toFixed(1)}%, 平均收益: ${avgProfit.toFixed(1)}`)
       
-      if (strongWinRate > 0.7 && avgProfit < 30) {
+      if (strongWinRate > 0.6 && avgProfit < 30) {
         personalityAdj.aggressionAdjust = Math.min(0.15, personalityAdj.aggressionAdjust + 0.03)
+      } else if (strongWinRate < 0.4) {
+        personalityAdj.aggressionAdjust = Math.max(-0.15, personalityAdj.aggressionAdjust - 0.02)
       }
     }
     
@@ -1595,13 +1681,15 @@ export class AIDecisionMaker {
     
     // 分析慢打效果（按个性）
     const slowPlays = completedDecisions.filter(d => 
-      d.action === 'call' && d.handStrength >= 6000
+      d.action === 'call' && d.handStrength >= 5000
     )
-    if (slowPlays.length >= 3) {
+    console.log(`[个性分析] 慢打次数: ${slowPlays.length}`)
+    if (slowPlays.length >= 2) {
       const slowPlayAvgProfit = slowPlays.reduce((sum, s) => sum + s.result.profit, 0) / slowPlays.length
+      console.log(`[个性分析] 慢打平均收益: ${slowPlayAvgProfit.toFixed(1)}`)
       if (slowPlayAvgProfit < 20) {
         personalityAdj.slowPlayAdjust = Math.max(-0.15, personalityAdj.slowPlayAdjust - 0.03)
-      } else if (slowPlayAvgProfit > 60) {
+      } else if (slowPlayAvgProfit > 40) {
         personalityAdj.slowPlayAdjust = Math.min(0.1, personalityAdj.slowPlayAdjust + 0.02)
       }
     }
@@ -1647,15 +1735,33 @@ export class AIDecisionMaker {
       }
     }
     
+    // 分析弱牌处理（全局）
+    const weakHands = completedDecisions.filter(d => d.handStrength < 3000)
+    if (weakHands.length >= 5) {
+      const weakWinRate = weakHands.filter(w => w.result.won).length / weakHands.length
+      const weakFolds = weakHands.filter(w => w.action === 'fold').length
+      const weakFoldRate = weakFolds / weakHands.length
+      
+      if (weakWinRate < 0.2 && weakFoldRate < 0.5) {
+        // 弱牌胜率低且弃牌不够多，提高阈值（更容易判定为弱牌）
+        globalAdj.weakThresholdAdjust = Math.min(500, (globalAdj.weakThresholdAdjust || 0) + 100)
+      } else if (weakWinRate > 0.35) {
+        // 弱牌胜率高，可能阈值太高，降低
+        globalAdj.weakThresholdAdjust = Math.max(-500, (globalAdj.weakThresholdAdjust || 0) - 50)
+      }
+    }
+    
     // 分析陷阱效果（按个性）
     const traps = completedDecisions.filter(d => 
-      d.action === 'call' && d.handStrength >= 7000
+      d.action === 'call' && d.handStrength >= 6000
     )
-    if (traps.length >= 3) {
+    console.log(`[个性分析] 陷阱次数: ${traps.length}`)
+    if (traps.length >= 2) {
       const trapAvgProfit = traps.reduce((sum, t) => sum + t.result.profit, 0) / traps.length
-      if (trapAvgProfit < 30) {
+      console.log(`[个性分析] 陷阱平均收益: ${trapAvgProfit.toFixed(1)}`)
+      if (trapAvgProfit < 20) {
         personalityAdj.trapAdjust = Math.max(-0.2, personalityAdj.trapAdjust - 0.05)
-      } else if (trapAvgProfit > 80) {
+      } else if (trapAvgProfit > 50) {
         personalityAdj.trapAdjust = Math.min(0.2, personalityAdj.trapAdjust + 0.03)
       }
     }
@@ -1674,7 +1780,12 @@ export class AIDecisionMaker {
     }
     
     // 保存到数据库
-    this.saveStrategyAdjustments(personalityType).catch(() => {})
+    console.log(`[策略分析] ${playerName}(${personalityType}) 分析完成，准备保存`)
+    console.log(`[策略分析] 个性调整:`, JSON.stringify(personalityAdj))
+    console.log(`[策略分析] 全局调整:`, JSON.stringify(globalAdj))
+    this.saveStrategyAdjustments(personalityType).catch(e => {
+      console.error(`[策略分析] 保存失败:`, e.message)
+    })
   }
 
   // 获取策略调整参数（合并个性调整 + 全局调整）
@@ -1708,6 +1819,9 @@ export class AIDecisionMaker {
 
   // 记录玩家操作（所有玩家通用）
   logPlayerAction(playerName, playerType, action, amount, context = {}) {
+    // 获取玩家对象以判断状态
+    const player = this.game.seats.find(p => p && p.name === playerName)
+    
     const entry = {
       timestamp: Date.now(),
       round: this.game.state.round || 1,
@@ -1717,10 +1831,11 @@ export class AIDecisionMaker {
       amount: amount || 0,
       potSize: this.game.state.pot,
       currentBet: this.game.state.currentBet,
-      reasoning: null  // AI 玩家会填充决策思路
+      isBlind: player ? !player.hasPeeked : false,  // 是否焖牌状态
+      reasoning: null
     }
 
-    // AI 玩家生成决策思路
+    // AI 玩家生成决策思路（简化版，不显示手牌）
     if (playerType === 'ai' && context.reasoning) {
       entry.reasoning = context.reasoning
     }
@@ -1728,43 +1843,37 @@ export class AIDecisionMaker {
     this.gameReplayLog.push(entry)
   }
 
-  // 生成 AI 决策思路
+  // 生成 AI 决策思路（不显示手牌）
   generateReasoning(player, decision, context) {
     const { strength, handEval, opponentProfiles, round, position, callAmount, personality } = context
     const parts = []
 
-    // 1. 手牌评估
-    const handType = player.hand?.getType()
-    if (handType) {
-      let handLevel = '弱牌'
-      if (handEval?.isMonster) handLevel = '怪兽牌'
-      else if (handEval?.isStrong) handLevel = '强牌'
-      else if (handEval?.isMedium) handLevel = '中等牌'
-      parts.push(`手牌: ${handType.name}(${handLevel})`)
-    } else if (!player.hasPeeked) {
-      parts.push('状态: 焖牌中')
-    }
-
-    // 2. 位置
+    // 1. 位置
     if (position) {
       const posName = { early: '前位', middle: '中位', late: '后位' }
       parts.push(`位置: ${posName[position] || position}`)
     }
 
-    // 3. 对手分析
+    // 2. 对手分析（使用AI性格名称）
     if (opponentProfiles && opponentProfiles.length > 0) {
       const oppInfo = opponentProfiles.map(o => {
+        // 优先使用AI的性格名称
+        const aiPersonality = this.getPersonality(o.player.name)
+        if (aiPersonality && aiPersonality.config) {
+          return `${o.player.name}(${aiPersonality.config.name})`
+        }
+        // 人类玩家使用分析类型
         const type = o.analysis?.type || 'unknown'
         const typeName = {
           rock: '岩石型', maniac: '疯狂型', aggressive: '激进型',
-          calling_station: '跟注站', balanced: '均衡型', unknown: '未知'
+          calling_station: '跟注站', balanced: '均衡型', unknown: '玩家'
         }
         return `${o.player.name}(${typeName[type] || type})`
       }).join(', ')
       parts.push(`对手: ${oppInfo}`)
     }
 
-    // 4. 筹码压力
+    // 3. 筹码压力
     if (callAmount > 0) {
       const pressure = Math.round(callAmount / player.chips * 100)
       parts.push(`跟注压力: ${pressure}%`)
@@ -1864,12 +1973,29 @@ export class AIDecisionMaker {
 
   // 获取格式化的复盘数据（用于存储和展示）
   getFormattedReplay() {
+    // 收集所有玩家的手牌信息
+    const playerHands = []
+    for (let i = 0; i < this.game.seats.length; i++) {
+      const player = this.game.seats[i]
+      if (player && player.hand && player.hand.cards) {
+        playerHands.push({
+          seatIndex: i,
+          name: player.name,
+          isAI: player.isAI || false,
+          cards: player.hand.cards.map(c => ({ rank: c.rank, suit: c.suit })),
+          handType: player.hand.getType()?.name || null,
+          folded: player.folded || false
+        })
+      }
+    }
+
     return {
       gameId: `${Date.now()}`,
-      roomCode: this.game.room?.code || 'unknown',
+      roomCode: this.game.roomCode || 'unknown',
       startTime: this.gameReplayLog[0]?.timestamp || Date.now(),
       endTime: this.gameReplayLog[this.gameReplayLog.length - 1]?.timestamp || Date.now(),
       totalRounds: this.game.state.round || 1,
+      playerHands,
       actions: this.gameReplayLog.map(entry => ({
         ...entry,
         timestamp: entry.timestamp

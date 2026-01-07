@@ -1193,6 +1193,9 @@ export class AIDecisionMaker {
     const showdownCost = this.game.getLastActiveBetAmount(player.id)
     if (player.chips < showdownCost) return null
     
+    // 牌力门槛：至少要有一对才考虑开牌
+    if (strength < 3500) return null  // 一对小牌约3000-4000
+    
     // 多人底池时更谨慎开牌
     const playerCount = opponentProfiles.length + 1
     if (playerCount >= 4 && strength < 6000) return null  // 4人以上需要更强的牌
@@ -1204,13 +1207,17 @@ export class AIDecisionMaker {
     // 个性影响开牌激进度 + 自修正
     const showdownAggression = (personality ? personality.showdownAggression : 0.5) + adjustments.showdownAdjust
     
-    // 找最佳开牌目标
+    // 找最佳开牌目标（选估计牌力最弱的对手）
     const sorted = [...opponentProfiles].sort((a, b) => a.estimatedStrength - b.estimatedStrength)
     const target = sorted[0]
     if (!target) return null
     
     // 计算开牌期望值（使用改进的胜率计算）
     const winProb = this.calculateWinProbability(strength, target, opponentProfiles.length + 1)
+    
+    // 胜率低于50%不开牌
+    if (winProb < 0.5) return null
+    
     const potSize = this.game.state.pot
     const ev = winProb * potSize - (1 - winProb) * showdownCost
     
@@ -1225,6 +1232,7 @@ export class AIDecisionMaker {
     if (ev > showdownCost * 0.5) showdownChance += 0.4
     else if (ev > 0) showdownChance += 0.25
     else if (ev > -showdownCost * 0.3) showdownChance += 0.1
+    else return null  // EV 太负，不开牌
     
     // 高胜率时更愿意开
     if (winProb > 0.7) showdownChance += 0.2
@@ -1253,40 +1261,38 @@ export class AIDecisionMaker {
 
   // 计算胜率（改进版）
   calculateWinProbability(myStrength, targetProfile, playerCount = 2) {
-    const oppStrength = targetProfile.estimatedStrength
+    const oppEstimatedStrength = targetProfile.estimatedStrength
     const bluffLikelihood = targetProfile.analysis.bluffLikelihood
     const tiltLevel = targetProfile.analysis.tiltLevel || 0
     
-    // 基于牌力的基础胜率（使用 sigmoid 函数平滑过渡）
-    // 牌力范围大约 1000-10000，中点约 5000
-    const strengthDiff = myStrength - 5000
-    const baseWinProb = 1 / (1 + Math.exp(-strengthDiff / 1500))
+    // 将对手估计强度(0-1)转换为牌力值(1000-10000)
+    // oppEstimatedStrength 0.3 → 约3000, 0.5 → 约5000, 0.75 → 约7500
+    const oppStrengthValue = 1000 + oppEstimatedStrength * 9000
     
-    // 对手牌力估计的影响
-    // oppStrength 是 0-1 的估计值，转换为对我胜率的影响
-    const oppFactor = 1 - oppStrength * 0.4  // 对手越强，我胜率越低
+    // 基于牌力差距计算胜率
+    const strengthDiff = myStrength - oppStrengthValue
+    // 使用 sigmoid 函数，差距1000约等于10%胜率变化
+    let baseWinProb = 1 / (1 + Math.exp(-strengthDiff / 1000))
     
-    // 诈唬可能性加成
-    const bluffBonus = bluffLikelihood * 0.15
+    // 诈唬可能性加成（对手可能在诈唬，实际牌力比估计的弱）
+    const bluffBonus = bluffLikelihood * 0.1
     
     // 倾斜加成（倾斜玩家判断力下降）
-    const tiltBonus = tiltLevel * 0.1
+    const tiltBonus = tiltLevel * 0.05
     
     // 多人底池折扣（人越多，胜率越低）
-    const multiWayDiscount = Math.pow(0.85, playerCount - 2)
+    const multiWayDiscount = Math.pow(0.9, playerCount - 2)
     
-    let winProb = baseWinProb * oppFactor * multiWayDiscount + bluffBonus + tiltBonus
+    let winProb = baseWinProb * multiWayDiscount + bluffBonus + tiltBonus
     
     // 根据对手类型微调
     const oppType = targetProfile.analysis.type
     if (oppType === 'rock') {
       // 岩石型玩家还在牌局里，说明牌力可能较强
-      winProb *= 0.85
+      winProb *= 0.8
     } else if (oppType === 'maniac') {
       // 疯狂型玩家什么牌都打，胜率相对提高
-      winProb *= 1.1
-    } else if (oppType === 'calling_station') {
-      // 跟注站不代表牌力，保持原样
+      winProb *= 1.05
     }
     
     return Math.max(0.05, Math.min(0.95, winProb))
@@ -1332,22 +1338,19 @@ export class AIDecisionMaker {
 
   // 计算位置优势
   calculatePosition(seatIndex, activePlayers) {
-    const currentPlayerIndex = this.game.state.currentPlayerIndex
     const totalActive = activePlayers.length + 1
+    if (totalActive <= 1) return 'late'
     
-    // 计算距离庄家的相对位置
-    let actionsRemaining = 0
-    for (const p of activePlayers) {
-      if (p.id > seatIndex || (currentPlayerIndex <= seatIndex && p.id < currentPlayerIndex)) {
-        actionsRemaining++
-      }
-    }
+    // 找出所有活跃玩家的座位号（包括自己）
+    const activeSeats = [seatIndex, ...activePlayers.map(p => p.id)].sort((a, b) => a - b)
     
-    const positionRatio = actionsRemaining / Math.max(totalActive - 1, 1)
+    // 找到当前玩家在活跃玩家中的相对位置
+    const myPosition = activeSeats.indexOf(seatIndex)
+    const positionRatio = myPosition / (totalActive - 1)
     
-    // 前位（还有很多人要行动）、中位、后位（大部分人已行动）
-    if (positionRatio >= 0.6) return 'early'
-    if (positionRatio >= 0.3) return 'middle'
+    // 前1/3是前位，中间1/3是中位，后1/3是后位
+    if (positionRatio <= 0.33) return 'early'
+    if (positionRatio <= 0.66) return 'middle'
     return 'late'
   }
 
@@ -1873,9 +1876,11 @@ export class AIDecisionMaker {
       parts.push(`对手: ${oppInfo}`)
     }
 
-    // 3. 筹码压力
-    if (callAmount > 0) {
-      const pressure = Math.round(callAmount / player.chips * 100)
+    // 3. 筹码压力（使用总投入占比）
+    if (callAmount > 0 && player.chips > 0) {
+      const totalInvested = player.currentBet + callAmount
+      const totalStack = player.chips + player.currentBet
+      const pressure = Math.round(totalInvested / totalStack * 100)
       parts.push(`跟注压力: ${pressure}%`)
     }
 

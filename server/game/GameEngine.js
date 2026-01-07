@@ -281,6 +281,11 @@ export class GameEngine {
 
     if (allActed && allBetsEqual) {
       this.state.showdownReady = true
+      // 进入新一轮下注：重置所有玩家的 hasActed，增加回合数
+      this.state.round++
+      actionable.forEach(p => {
+        p.hasActed = false
+      })
     }
 
     if (actionable.length === 0) {

@@ -64,8 +64,11 @@ async function startServer() {
       }
     })
     
-    // 创建 WebSocket 服务器
-    const wss = new WebSocketServer({ server })
+    // 创建 WebSocket 服务器（只接受 /ws 路径）
+    const wss = new WebSocketServer({ 
+      server,
+      path: '/ws'
+    })
     setupWebSocket(wss)
     
     // 启动断线检查器

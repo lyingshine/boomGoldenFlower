@@ -2,6 +2,37 @@
  * 网络管理器 - 与服务端通信
  * 客户端只发送操作意图，服务端执行并返回结果
  */
+
+// Safari 调试日志（会显示在页面上）
+const debugLogs = []
+const MAX_DEBUG_LOGS = 50
+
+function debugLog(msg) {
+  const timestamp = new Date().toLocaleTimeString()
+  const logEntry = `[${timestamp}] ${msg}`
+  console.log(logEntry)
+  debugLogs.push(logEntry)
+  if (debugLogs.length > MAX_DEBUG_LOGS) {
+    debugLogs.shift()
+  }
+  // 更新页面上的调试面板（如果存在）
+  const debugPanel = document.getElementById('safari-debug')
+  if (debugPanel) {
+    debugPanel.textContent = debugLogs.join('\n')
+  }
+}
+
+// 检测 Safari 浏览器
+function isSafari() {
+  const ua = navigator.userAgent
+  return /Safari/.test(ua) && !/Chrome/.test(ua)
+}
+
+// 导出调试日志获取函数
+export function getDebugLogs() {
+  return debugLogs.slice()
+}
+
 export class NetworkManager {
   constructor() {
     this.ws = null
@@ -51,12 +82,13 @@ export class NetworkManager {
       const loc = window.location
       let host = loc.host || loc.hostname
       
-      console.log('🔍 URL 调试信息:')
-      console.log('  - location.href:', loc.href)
-      console.log('  - location.host:', loc.host)
-      console.log('  - location.hostname:', loc.hostname)
-      console.log('  - location.port:', loc.port)
-      console.log('  - location.protocol:', loc.protocol)
+      debugLog('🔍 URL 调试信息:')
+      debugLog(`  href: ${loc.href}`)
+      debugLog(`  host: ${loc.host}`)
+      debugLog(`  hostname: ${loc.hostname}`)
+      debugLog(`  protocol: ${loc.protocol}`)
+      debugLog(`  isSafari: ${isSafari()}`)
+      debugLog(`  userAgent: ${navigator.userAgent.substring(0, 80)}`)
       
       // iOS PWA 模式下可能获取不到 host
       if (!host || host === '') {
@@ -65,10 +97,10 @@ export class NetworkManager {
         const match = href.match(/^https?:\/\/([^\/]+)/)
         if (match) {
           host = match[1]
-          console.log('  - 从 href 解析 host:', host)
+          debugLog(`  从 href 解析 host: ${host}`)
         } else {
           host = 'localhost:3001'
-          console.log('  - 使用默认 host:', host)
+          debugLog(`  使用默认 host: ${host}`)
         }
       }
       
@@ -78,25 +110,23 @@ export class NetworkManager {
       const isSecure = loc.protocol === 'https:'
       const wsProtocol = isSecure ? 'wss:' : 'ws:'
       
-      console.log('  - isDev:', isDev)
-      console.log('  - isSecure:', isSecure)
-      console.log('  - wsProtocol:', wsProtocol)
+      debugLog(`  isDev: ${isDev}, isSecure: ${isSecure}`)
       
       if (isDev) {
         // 开发环境：使用 Vite 代理路径 /ws
         // 这样可以绕过 iOS Safari 的 WebSocket 限制
         const baseUrl = `${loc.protocol}//${host}`
         this.serverUrl = `${wsProtocol}//${host}/ws`
-        console.log('  - 开发环境使用 Vite 代理:', this.serverUrl)
+        debugLog(`  开发环境: ${this.serverUrl}`)
       } else {
         // 生产环境：使用 /ws 路径（配合 Nginx 反向代理）
         this.serverUrl = `${wsProtocol}//${host}/ws`
-        console.log('  - 生产环境，使用:', this.serverUrl)
+        debugLog(`  生产环境: ${this.serverUrl}`)
       }
       
-      console.log('✅ 最终 WebSocket URL:', this.serverUrl)
+      debugLog(`✅ WebSocket URL: ${this.serverUrl}`)
     } catch (e) {
-      console.error('初始化 serverUrl 失败:', e)
+      debugLog(`❌ 初始化 serverUrl 失败: ${e.message}`)
       this.serverUrl = 'ws://localhost:3001'
     }
   }
@@ -189,7 +219,7 @@ export class NetworkManager {
         if (resolved) return
         resolved = true
         const duration = Date.now() - connectionStartTime
-        console.error(`❌ 连接失败，耗时 ${duration}ms，原因:`, error.message)
+        debugLog(`❌ 连接失败，耗时 ${duration}ms: ${error.message}`)
         cleanup()
         reject(error)
       }
@@ -198,23 +228,23 @@ export class NetworkManager {
         // 关闭旧连接
         if (this.ws) {
           try {
-            console.log('🧹 清理旧连接')
+            debugLog('🧹 清理旧连接')
             this.ws.onclose = null
             this.ws.onerror = null
             this.ws.onmessage = null
             this.ws.onopen = null
             this.ws.close()
           } catch (e) {
-            console.warn('清理旧连接时出错:', e)
+            debugLog(`清理旧连接出错: ${e.message}`)
           }
           this.ws = null
         }
         
-        console.log('🔌 创建 WebSocket 连接...')
+        debugLog(`🔌 创建 WebSocket: ${this.serverUrl}`)
         this.ws = new WebSocket(this.serverUrl)
         
         this.ws.onopen = () => {
-          console.log('✅ WebSocket 已打开，等待服务器确认...')
+          debugLog(`✅ WebSocket 已打开，readyState: ${this.ws.readyState}`)
           this.isConnected = true
           this.reconnectAttempts = 0
           if (this.onConnected) this.onConnected()
@@ -222,11 +252,11 @@ export class NetworkManager {
           // Safari 兼容：主动发送心跳确保连接活跃
           setTimeout(() => {
             if (this.ws && this.ws.readyState === 1 && !this.clientId) {
-              console.log('💓 发送心跳检测')
+              debugLog('💓 发送心跳检测')
               try {
                 this.ws.send(JSON.stringify({ type: 'ping' }))
               } catch (e) {
-                console.warn('心跳发送失败:', e)
+                debugLog(`心跳发送失败: ${e.message}`)
               }
             }
           }, 500)
@@ -235,32 +265,28 @@ export class NetworkManager {
         this.ws.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data)
-            console.log('📨 收到消息:', message.type, message)
+            debugLog(`📨 收到: ${message.type}`)
             this.handleMessage(message)
             // 收到 clientId 后才算连接完成
             if (message.type === 'connected' && message.clientId) {
-              console.log('🆔 收到 clientId:', message.clientId)
+              debugLog(`🆔 clientId: ${message.clientId}`)
               // 确保 clientId 已设置后再 resolve
               setTimeout(() => {
                 if (this.clientId) {
                   doResolve()
                 } else {
-                  console.warn('⚠️ clientId 未正确设置')
+                  debugLog('⚠️ clientId 未正确设置')
                   doReject(new Error('clientId 未设置'))
                 }
               }, 50)
             }
           } catch (error) {
-            console.error('消息解析错误:', error)
+            debugLog(`消息解析错误: ${error.message}`)
           }
         }
         
         this.ws.onclose = (event) => {
-          console.log('❌ WebSocket 关闭', {
-            code: event.code,
-            reason: event.reason,
-            wasClean: event.wasClean
-          })
+          debugLog(`❌ WebSocket 关闭 code:${event.code} reason:${event.reason}`)
           this.isConnected = false
           this.clientId = null
           if (this.onDisconnected) this.onDisconnected()
@@ -272,12 +298,8 @@ export class NetworkManager {
         }
         
         this.ws.onerror = (error) => {
-          console.error('❌ WebSocket 错误:', error)
-          console.error('错误详情:', {
-            type: error.type,
-            target: error.target?.readyState,
-            url: this.serverUrl
-          })
+          debugLog(`❌ WebSocket 错误: ${error.type || 'unknown'}`)
+          debugLog(`  readyState: ${error.target?.readyState}, url: ${this.serverUrl}`)
           this.isConnected = false
           // Safari 有时只触发 onerror 不触发 onclose
           if (!resolved) {
@@ -286,18 +308,18 @@ export class NetworkManager {
         }
         
         // Safari 需要更长的超时时间
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-        const timeout = isSafari ? 15000 : 10000
-        console.log(`⏱️ 设置超时: ${timeout}ms (Safari: ${isSafari})`)
+        const safariDetected = isSafari()
+        const timeout = safariDetected ? 15000 : 10000
+        debugLog(`⏱️ 超时设置: ${timeout}ms (Safari: ${safariDetected})`)
         
         timeoutId = setTimeout(() => {
-          console.error('⏱️ 连接超时')
+          debugLog(`⏱️ 连接超时，readyState: ${this.ws?.readyState}`)
           if (this.ws && this.ws.readyState !== 1) {
-            console.log('关闭超时的连接')
+            debugLog('关闭超时的连接')
             try {
               this.ws.close()
             } catch (e) {
-              console.warn('关闭超时连接失败:', e)
+              debugLog(`关闭超时连接失败: ${e.message}`)
             }
           }
           doReject(new Error('连接超时，请检查网络'))

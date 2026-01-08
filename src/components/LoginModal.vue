@@ -33,12 +33,22 @@
           {{ isRegister ? '立即登录' : '立即注册' }}
         </a>
       </div>
+      
+      <!-- Safari 调试面板 -->
+      <div v-if="showDebug" class="debug-panel">
+        <div class="debug-header">
+          <span>🔧 调试日志</span>
+          <button @click="showDebug = false" class="debug-close">×</button>
+        </div>
+        <pre id="safari-debug" class="debug-content">{{ debugLogs }}</pre>
+      </div>
+      <button v-else @click="showDebug = true" class="debug-toggle">🔧</button>
     </div>
   </div>
 </template>
 
 <script>
-import { NetworkManager } from '../utils/NetworkManager.js'
+import { NetworkManager, getDebugLogs } from '../utils/NetworkManager.js'
 import { UserManager } from '../utils/UserManager.js'
 
 // 单例模式，避免重复创建连接
@@ -56,7 +66,9 @@ export default {
       isRegister: false,
       message: '',
       isSuccess: false,
-      isLoading: false
+      isLoading: false,
+      showDebug: false,
+      debugLogs: ''
     }
   },
   mounted() {
@@ -65,6 +77,18 @@ export default {
     }
     this.networkManager = sharedNetworkManager
     this.userManager = new UserManager(this.networkManager)
+    
+    // 定时更新调试日志
+    this._debugTimer = setInterval(() => {
+      if (this.showDebug) {
+        this.debugLogs = getDebugLogs().join('\n')
+      }
+    }, 500)
+  },
+  beforeUnmount() {
+    if (this._debugTimer) {
+      clearInterval(this._debugTimer)
+    }
   },
   methods: {
     async submit() {
@@ -152,5 +176,63 @@ export default {
 
 .login-btn:disabled {
   opacity: 0.7;
+}
+
+/* 调试面板样式 */
+.debug-toggle {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.debug-panel {
+  position: absolute;
+  bottom: 50px;
+  left: 10px;
+  right: 10px;
+  max-height: 200px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.debug-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  color: #fff;
+}
+
+.debug-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.debug-content {
+  padding: 8px 12px;
+  margin: 0;
+  font-size: 10px;
+  color: #0f0;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 150px;
+  overflow-y: auto;
 }
 </style>

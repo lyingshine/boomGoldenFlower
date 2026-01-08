@@ -283,8 +283,8 @@ export async function savePersonalityAdjustments(personalityType, adjustments, t
      bluff_adjust = VALUES(bluff_adjust), aggression_adjust = VALUES(aggression_adjust),
      slow_play_adjust = VALUES(slow_play_adjust), trap_adjust = VALUES(trap_adjust),
      total_decisions = VALUES(total_decisions), updated_at = VALUES(updated_at)`,
-    [personalityType, adjustments.bluffAdjust || 0, adjustments.aggressionAdjust || 0,
-     adjustments.slowPlayAdjust || 0, adjustments.trapAdjust || 0, totalDecisions, now]
+    [personalityType, adjustments.bluffAdjust ?? 0, adjustments.aggressionAdjust ?? 0,
+     adjustments.slowPlayAdjust ?? 0, adjustments.trapAdjust ?? 0, totalDecisions, now]
   )
 }
 
@@ -300,10 +300,10 @@ export async function saveGlobalAdjustments(adjustments, totalDecisions = 0) {
      monster_threshold_adjust = VALUES(monster_threshold_adjust), strong_threshold_adjust = VALUES(strong_threshold_adjust),
      medium_threshold_adjust = VALUES(medium_threshold_adjust), weak_threshold_adjust = VALUES(weak_threshold_adjust),
      probe_adjust = VALUES(probe_adjust), total_decisions = VALUES(total_decisions), updated_at = VALUES(updated_at)`,
-    [adjustments.foldAdjust || 0, adjustments.showdownAdjust || 0,
-     adjustments.monsterThresholdAdjust || 0, adjustments.strongThresholdAdjust || 0,
-     adjustments.mediumThresholdAdjust || 0, adjustments.weakThresholdAdjust || 0,
-     adjustments.probeAdjust || 0, totalDecisions, now]
+    [adjustments.foldAdjust ?? 0, adjustments.showdownAdjust ?? 0,
+     adjustments.monsterThresholdAdjust ?? 0, adjustments.strongThresholdAdjust ?? 0,
+     adjustments.mediumThresholdAdjust ?? 0, adjustments.weakThresholdAdjust ?? 0,
+     adjustments.probeAdjust ?? 0, totalDecisions, now]
   )
 }
 

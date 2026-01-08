@@ -144,29 +144,28 @@ function createStore() {
       
       // 处理座位更新
       if (serverState.seats) {
-        if (isFull || Array.isArray(serverState.seats)) {
-          // 完整更新 - 确保是数组
-          const seatsArray = Array.isArray(serverState.seats) ? serverState.seats : Object.values(serverState.seats)
-          state.game.seats = seatsArray.map(seat => {
-          if (!seat) return null
-          return {
-            id: seat.id,
-            name: seat.name,
-            chips: seat.chips,
-            type: seat.type,
-            avatarUrl: seat.avatarUrl || null,
-            currentBet: seat.currentBet || 0,
-            lastBetAmount: seat.lastBetAmount || 0,
-            lastBetBlind: seat.lastBetBlind || false,
-            folded: seat.folded || false,
-            lostShowdown: seat.lostShowdown || false,
-            hasPeeked: seat.hasPeeked || false,
-            isAllIn: seat.isAllIn || false,
-            cardCount: seat.cardCount || 0,
-            cards: seat.cards || null,
-            handType: seat.handType || null
-          }
-        })
+        if (isFull && Array.isArray(serverState.seats)) {
+          // 完整更新 - 服务端发送的是数组
+          state.game.seats = serverState.seats.map(seat => {
+            if (!seat) return null
+            return {
+              id: seat.id,
+              name: seat.name,
+              chips: seat.chips,
+              type: seat.type,
+              avatarUrl: seat.avatarUrl || null,
+              currentBet: seat.currentBet || 0,
+              lastBetAmount: seat.lastBetAmount || 0,
+              lastBetBlind: seat.lastBetBlind || false,
+              folded: seat.folded || false,
+              lostShowdown: seat.lostShowdown || false,
+              hasPeeked: seat.hasPeeked || false,
+              isAllIn: seat.isAllIn || false,
+              cardCount: seat.cardCount || 0,
+              cards: seat.cards || null,
+              handType: seat.handType || null
+            }
+          })
         } else {
           // Delta 更新：只更新变化的座位
           for (const [index, seatDiff] of Object.entries(serverState.seats)) {

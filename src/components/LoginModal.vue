@@ -38,7 +38,10 @@
       <div v-if="showDebug" class="debug-panel">
         <div class="debug-header">
           <span>🔧 调试日志</span>
-          <button @click="showDebug = false" class="debug-close">×</button>
+          <div>
+            <button @click="copyDebugLogs" class="debug-copy">{{ copyText }}</button>
+            <button @click="showDebug = false" class="debug-close">×</button>
+          </div>
         </div>
         <pre id="safari-debug" class="debug-content">{{ debugLogs }}</pre>
       </div>
@@ -68,7 +71,8 @@ export default {
       isSuccess: false,
       isLoading: false,
       showDebug: false,
-      debugLogs: ''
+      debugLogs: '',
+      copyText: '复制'
     }
   },
   mounted() {
@@ -145,6 +149,29 @@ export default {
       this.isRegister = !this.isRegister
       this.message = ''
       this.isSuccess = false
+    },
+    async copyDebugLogs() {
+      try {
+        await navigator.clipboard.writeText(this.debugLogs)
+        this.copyText = '已复制!'
+        setTimeout(() => { this.copyText = '复制' }, 1500)
+      } catch (e) {
+        // iOS Safari 可能不支持 clipboard API，使用备用方案
+        const textarea = document.createElement('textarea')
+        textarea.value = this.debugLogs
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        try {
+          document.execCommand('copy')
+          this.copyText = '已复制!'
+        } catch (err) {
+          this.copyText = '复制失败'
+        }
+        document.body.removeChild(textarea)
+        setTimeout(() => { this.copyText = '复制' }, 1500)
+      }
     }
   }
 }
@@ -222,6 +249,17 @@ export default {
   font-size: 18px;
   cursor: pointer;
   padding: 0 4px;
+}
+
+.debug-copy {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-right: 8px;
 }
 
 .debug-content {
